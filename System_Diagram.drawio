@@ -1,0 +1,76 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="SmGRnd5bN7IucUVt0BQg">
+    <mxGraphModel dx="774" dy="550" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-3" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;" value="End of every match day" vertex="1">
+          <mxGeometry height="80" width="120" x="140" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-11" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-17" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;defaultLabelBackgroundColor=page;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="e3z3i9odNZ33lGiaEuGY-16">
+          <mxGeometry relative="1" x="-0.3887" as="geometry">
+            <mxPoint x="540" y="216" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-2" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;" value="Retrieve game data from api-sports.io" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-14" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-4" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;" value="Retrieve Gemma 4 Prediction from API" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-18" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-21" connectable="0" parent="e3z3i9odNZ33lGiaEuGY-18" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;defaultLabelBackgroundColor=page;" value="Feed data to Streamlit" vertex="1">
+          <mxGeometry relative="1" x="0.0098" as="geometry">
+            <mxPoint y="13" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-22" connectable="0" parent="e3z3i9odNZ33lGiaEuGY-18" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;defaultLabelBackgroundColor=page;" value="Feed data to Streamlit" vertex="1">
+          <mxGeometry relative="1" x="0.0098" as="geometry">
+            <mxPoint x="-31" y="-397" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-7" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;" value="Data to and from CSV file" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-12" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Parse Data" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-15" edge="1" parent="1" source="e3z3i9odNZ33lGiaEuGY-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;defaultLabelBackgroundColor=page;" target="e3z3i9odNZ33lGiaEuGY-7" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Parse Data" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-16" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;" value="Display predictons and update game data to Streamlit site" vertex="1">
+          <mxGeometry height="70" width="130" x="460" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-23" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Connects requests with Pandas" vertex="1">
+          <mxGeometry height="30" width="120" x="60" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-24" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Calls Gemini API" vertex="1">
+          <mxGeometry height="30" width="100" x="80" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-25" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Connects Gemini API with Pandas" vertex="1">
+          <mxGeometry height="30" width="100" x="40" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="e3z3i9odNZ33lGiaEuGY-26" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Edit CSV with Pandas" vertex="1">
+          <mxGeometry height="30" width="110" x="75" y="555" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
