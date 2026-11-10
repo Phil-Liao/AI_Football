@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 def main():
     load_dotenv()
-    api_key = os.getenv("FOOTBALL_KEY")
+    api_key = os.getenv("API_SPORTS_KEY")
     if not api_key:
         raise SystemExit(
             "FOOTBALL_KEY is missing. Add it to a .env file in the project root."
