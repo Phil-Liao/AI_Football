@@ -25,8 +25,8 @@ class FixtureStorage:
         "home_score", "away_score", "status", "raw_match",
     ]
 
-    def __init__(self, path: str | Path = "data.csv") -> None:
-        self.path = Path(path)
+    def __init__(self, path: str | Path | None = None) -> None:
+        self.path = Path(path) if path is not None else Path(__file__).with_name("data.csv")
         self.lock_path = self.path.with_name(f".{self.path.name}.lock")
 
     @contextmanager

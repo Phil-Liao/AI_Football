@@ -1,6 +1,9 @@
 """UI-only prototype for the AI Football Premier League dashboard."""
 
 import streamlit as st
+from pathlib import Path
+
+from storage import FixtureStorage
 
 
 st.set_page_config(
@@ -102,14 +105,23 @@ else:
         st.write("")
         st.button("✦  Predict upcoming", use_container_width=True)
 
-    # Static sample cards keep this file focused on Streamlit UI only.
-    sample_fixtures = [
-        ("Sat, Aug 16 · 12:30", "Liverpool", "Bournemouth", "vs", "Prediction pending", "UPCOMING"),
-        ("Sat, Aug 16 · 15:00", "Aston Villa", "Newcastle", "vs", "Prediction pending", "UPCOMING"),
-        ("Sun, Aug 17 · 16:30", "Manchester United", "Arsenal", "vs", "Prediction pending", "UPCOMING"),
-        ("Fri, Aug 15 · 20:00", "Liverpool", "Bournemouth", "4 – 2", "Gemma 4 · 2–1", "FT"),
-    ]
-    for kickoff, home, away, score, prediction, status in sample_fixtures:
+    fixtures = FixtureStorage(Path(__file__).with_name("data.csv")).load_matchday()
+    if fixtures.empty:
+        st.info("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
+
+    for fixture in fixtures.to_dict("records"):
+        kickoff = fixture.get("match_date", "")
+        home = fixture.get("home_team", "")
+        away = fixture.get("away_team", "")
+        home_score = fixture.get("home_score", "")
+        away_score = fixture.get("away_score", "")
+        score = (
+            f"{home_score} – {away_score}"
+            if str(home_score) not in ("", "nan") and str(away_score) not in ("", "nan")
+            else "vs"
+        )
+        status = str(fixture.get("status", "")).upper() or "UPCOMING"
+        prediction = "Prediction pending"
         st.markdown(
             '<div class="match-card">'
             f'<div class="match-date">{kickoff}</div>'

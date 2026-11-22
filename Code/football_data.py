@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+from pathlib import Path
 from typing import Any
 
 import dotenv
@@ -98,7 +99,7 @@ def format_match(match: dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     client = FootballDataClient()
-    storage = FixtureStorage("data.csv")
+    storage = FixtureStorage(Path(__file__).with_name("data.csv"))
     yesterday = dt.date.today() - dt.timedelta(days=1)
     try:
         matches = client.get_matches(yesterday)
