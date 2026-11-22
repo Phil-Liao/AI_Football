@@ -9,6 +9,8 @@ from typing import Any
 import dotenv
 import requests
 
+from storage import FixtureStorage
+
 
 class FootballDataClient:
     """Fetch match data from the footballdata.io API."""
@@ -96,12 +98,18 @@ def format_match(match: dict[str, Any]) -> str:
 
 if __name__ == "__main__":
     client = FootballDataClient()
+    storage = FixtureStorage("data.csv")
     yesterday = dt.date.today() - dt.timedelta(days=1)
     try:
         matches = client.get_matches(yesterday)
     except requests.exceptions.RequestException as error:
         print(f"Could not retrieve match data: {error}")
     else:
-        print(f"{client.TARGET_LEAGUE} matches for {yesterday.isoformat()}: {len(matches)}")
-        for match in matches:
-            print(format_match(match))
+        storage.save_matchday(matches)
+        stored_matches = storage.load_matchday()
+        print(f"{client.TARGET_LEAGUE} matches for {yesterday.isoformat()}: {len(stored_matches)}")
+        for match in stored_matches.to_dict("records"):
+            print(
+                f"{match['league']} | {match['match_date']} | "
+                f"{match['home_team']} {match['home_score']}–{match['away_score']} {match['away_team']}"
+            )
