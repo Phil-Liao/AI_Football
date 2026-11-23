@@ -126,7 +126,7 @@ class FixtureStorage(CsvStorage):
 
 
 class PredictionStorage(CsvStorage):
-    """Store Gemma predictions with match/model/prompt upsert semantics."""
+    """Store model predictions with match/model/prompt upsert semantics."""
 
     COLUMNS = [
         "match_id", "match_date", "home_team", "away_team", "model",

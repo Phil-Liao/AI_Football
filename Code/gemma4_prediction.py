@@ -1,4 +1,4 @@
-"""Gemma-powered Premier League match predictions."""
+"""Gemma implementation of the prediction model interface."""
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ from typing import Any, Iterable
 import dotenv
 import pandas as pd
 from google import genai
-
-from storage import PredictionStorage
 
 
 MODEL = "gemma-4-26b-a4b-it"
@@ -67,38 +65,24 @@ def predict_fixtures(fixtures: Iterable[dict[str, Any]]) -> dict[str, str]:
     return predictions
 
 
-def predict_upcoming(
-    fixtures: pd.DataFrame,
-    prediction_storage: PredictionStorage | None = None,
-) -> dict[str, str]:
-    """Predict incomplete fixtures and optionally persist the results."""
-    if fixtures.empty:
-        return {}
+class GemmaPredictionModel:
+    """Gemma 4 match prediction provider."""
 
-    upcoming = fixtures[
-        ~fixtures["status"].fillna("").astype(str).str.lower().isin(
-            {"complete", "completed", "finished"}
-        )
-    ]
-    predictions = predict_fixtures(upcoming.to_dict("records"))
+    name = "gemma"
+    model_id = MODEL
+    prompt_version = PROMPT_VERSION
 
-    if prediction_storage is not None:
-        rows: list[dict[str, Any]] = []
-        for fixture in upcoming.to_dict("records"):
-            match_id = str(fixture.get("match_id", ""))
-            prediction = predictions.get(match_id, "")
-            if not prediction or prediction.startswith("Prediction unavailable"):
-                continue
-            rows.append({
-                "match_id": match_id,
-                "match_date": fixture.get("match_date", ""),
-                "home_team": fixture.get("home_team", ""),
-                "away_team": fixture.get("away_team", ""),
-                "model": MODEL,
-                "prediction": prediction,
-                "prompt_version": PROMPT_VERSION,
-                "status": "stored",
-            })
-        prediction_storage.save_predictions(rows)
+    def predict_match(self, fixture: dict[str, Any]) -> str:
+        return predict_match(fixture)
 
-    return predictions
+
+def get_prediction_model() -> GemmaPredictionModel:
+    """Create the configured Gemma prediction provider."""
+    return GemmaPredictionModel()
+
+
+def predict_upcoming(fixtures: pd.DataFrame, prediction_storage: Any | None = None) -> dict[str, str]:
+    """Compatibility wrapper around the model-neutral prediction service."""
+    from prediction import predict_upcoming as predict_upcoming_for_model
+
+    return predict_upcoming_for_model(get_prediction_model(), fixtures, prediction_storage)

@@ -7,7 +7,7 @@ import requests
 import streamlit as st
 
 from football_data import FootballDataClient
-from gemma4_prediction import predict_upcoming
+from prediction import get_prediction_model, predict_upcoming
 from storage import FixtureStorage, PredictionStorage
 
 
@@ -149,8 +149,9 @@ else:
         if all_fixtures.empty:
             st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
         else:
-            with st.spinner("Gemma is calling the match..."):
-                new_predictions = predict_upcoming(all_fixtures, prediction_storage)
+            with st.spinner("The selected model is calling the match..."):
+                prediction_model = get_prediction_model("gemma")
+                new_predictions = predict_upcoming(prediction_model, all_fixtures, prediction_storage)
                 st.session_state.predictions = {**disk_predictions, **new_predictions}
 
     if all_fixtures.empty:
