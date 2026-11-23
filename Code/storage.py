@@ -1,60 +1,49 @@
-"""Thread/process-safe CSV storage for matchday fixtures."""
+"""Thread/process-safe CSV storage for fixtures and predictions."""
 
 from __future__ import annotations
 
 import json
 import os
 import tempfile
+import threading
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator
 
 import pandas as pd
 
 
-class FixtureStorage:
-    """Store and retrieve fixtures in a CSV file using Pandas.
+_THREAD_LOCKS: dict[str, threading.RLock] = {}
+_THREAD_LOCKS_GUARD = threading.Lock()
 
-    A process-level lock protects read/modify/write operations. Writes go to a
-    temporary file and are committed with ``os.replace`` so readers never see
-    a partially-written CSV.
-    """
 
-    COLUMNS = [
-        "match_id", "match_date", "league", "home_team", "away_team",
-        "home_score", "away_score", "status", "raw_match",
-    ]
+def _thread_lock(path: Path) -> threading.RLock:
+    key = str(path.resolve())
+    with _THREAD_LOCKS_GUARD:
+        return _THREAD_LOCKS.setdefault(key, threading.RLock())
 
-    def __init__(self, path: str | Path | None = None) -> None:
-        self.path = Path(path) if path is not None else Path(__file__).with_name("data.csv")
+
+class CsvStorage:
+    """Base class for race-safe CSV read and atomic read-modify-write operations."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
         self.lock_path = self.path.with_name(f".{self.path.name}.lock")
+        self._thread_lock = _thread_lock(self.path)
 
     @contextmanager
     def _lock(self) -> Generator[None, None, None]:
         import fcntl
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.lock_path.open("a+") as lock_file:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-
-    def save_matchday(self, matches: list[dict[str, Any]]) -> pd.DataFrame:
-        """Replace the stored matchday with ``matches`` and return the frame."""
-        frame = pd.DataFrame([self._normalize(match) for match in matches], columns=self.COLUMNS)
-        with self._lock():
-            self._atomic_write(frame)
-        return frame
-
-    def load_matchday(self) -> pd.DataFrame:
-        """Load the stored matchday, returning an empty typed frame if absent."""
-        with self._lock():
-            if not self.path.exists():
-                return pd.DataFrame(columns=self.COLUMNS)
-            frame = pd.read_csv(self.path, dtype={"match_id": "string"})
-        return frame.reindex(columns=self.COLUMNS)
+        with self._thread_lock:
+            with self.lock_path.open("a+") as lock_file:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def _atomic_write(self, frame: pd.DataFrame) -> None:
         descriptor, temporary_name = tempfile.mkstemp(
@@ -67,6 +56,55 @@ class FixtureStorage:
             os.replace(temporary_path, self.path)
         finally:
             temporary_path.unlink(missing_ok=True)
+
+
+class FixtureStorage(CsvStorage):
+    """Store and retrieve Premier League fixtures."""
+
+    COLUMNS = [
+        "match_id", "match_date", "league", "home_team", "away_team",
+        "home_score", "away_score", "status", "raw_match",
+    ]
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        fixture_path = Path(path) if path is not None else Path(__file__).with_name("data.csv")
+        super().__init__(fixture_path)
+
+    def save_matchday(self, matches: list[dict[str, Any]]) -> pd.DataFrame:
+        """Replace the stored fixture list with ``matches``."""
+        frame = pd.DataFrame([self._normalize(match) for match in matches], columns=self.COLUMNS)
+        with self._lock():
+            self._atomic_write(frame)
+        return frame
+
+    def merge_matchday(self, matches: list[dict[str, Any]]) -> pd.DataFrame:
+        """Replace matching fixture IDs and preserve other stored fixtures."""
+        incoming = pd.DataFrame([self._normalize(match) for match in matches], columns=self.COLUMNS)
+        with self._lock():
+            existing = self._load_frame_unlocked()
+            if incoming.empty:
+                return existing
+
+            incoming_ids = incoming["match_id"].astype("string").fillna("")
+            if not existing.empty:
+                existing_ids = existing["match_id"].astype("string").fillna("")
+                existing = existing.loc[~existing_ids.isin(incoming_ids)].copy()
+
+            combined = pd.concat([existing, incoming], ignore_index=True)
+            combined = combined.reindex(columns=self.COLUMNS)
+            self._atomic_write(combined)
+            return combined
+
+    def load_matchday(self) -> pd.DataFrame:
+        """Load fixtures without exposing partial CSV writes."""
+        with self._lock():
+            return self._load_frame_unlocked()
+
+    def _load_frame_unlocked(self) -> pd.DataFrame:
+        if not self.path.exists():
+            return pd.DataFrame(columns=self.COLUMNS)
+        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
+        return frame.reindex(columns=self.COLUMNS)
 
     @staticmethod
     def _normalize(match: dict[str, Any]) -> dict[str, Any]:
@@ -84,4 +122,61 @@ class FixtureStorage:
             "away_score": score.get("away", "") if isinstance(score, dict) else "",
             "status": match.get("status", ""),
             "raw_match": json.dumps(match, separators=(",", ":"), default=str),
+        }
+
+
+class PredictionStorage(CsvStorage):
+    """Store Gemma predictions with match/model/prompt upsert semantics."""
+
+    COLUMNS = [
+        "match_id", "match_date", "home_team", "away_team", "model",
+        "prediction", "prompt_version", "status", "created_at",
+    ]
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        prediction_path = Path(path) if path is not None else Path(__file__).with_name("predictions.csv")
+        super().__init__(prediction_path)
+
+    def save_prediction(self, prediction: dict[str, Any]) -> pd.DataFrame:
+        return self.save_predictions([prediction])
+
+    def save_predictions(self, predictions: list[dict[str, Any]]) -> pd.DataFrame:
+        incoming = pd.DataFrame([self._normalize(row) for row in predictions], columns=self.COLUMNS)
+        if incoming.empty:
+            return self.load_predictions()
+
+        keys = ["match_id", "model", "prompt_version"]
+        with self._lock():
+            existing = self._load_frame_unlocked()
+            if not existing.empty:
+                existing_keys = existing[keys].astype("string").fillna("").agg("\x1f".join, axis=1)
+                incoming_keys = incoming[keys].astype("string").fillna("").agg("\x1f".join, axis=1)
+                existing = existing.loc[~existing_keys.isin(incoming_keys)].copy()
+
+            combined = pd.concat([existing, incoming], ignore_index=True).reindex(columns=self.COLUMNS)
+            self._atomic_write(combined)
+            return combined
+
+    def load_predictions(self) -> pd.DataFrame:
+        with self._lock():
+            return self._load_frame_unlocked()
+
+    def _load_frame_unlocked(self) -> pd.DataFrame:
+        if not self.path.exists():
+            return pd.DataFrame(columns=self.COLUMNS)
+        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
+        return frame.reindex(columns=self.COLUMNS)
+
+    @staticmethod
+    def _normalize(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "match_id": str(row.get("match_id", "")),
+            "match_date": row.get("match_date", ""),
+            "home_team": row.get("home_team", ""),
+            "away_team": row.get("away_team", ""),
+            "model": row.get("model", ""),
+            "prediction": row.get("prediction", ""),
+            "prompt_version": str(row.get("prompt_version", "")),
+            "status": row.get("status", "stored"),
+            "created_at": row.get("created_at") or datetime.now(timezone.utc).isoformat(),
         }

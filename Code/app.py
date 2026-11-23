@@ -1,9 +1,14 @@
 """UI-only prototype for the AI Football Premier League dashboard."""
 
-import streamlit as st
 from pathlib import Path
 
-from storage import FixtureStorage
+import pandas as pd
+import requests
+import streamlit as st
+
+from football_data import FootballDataClient
+from gemma4_prediction import predict_upcoming
+from storage import FixtureStorage, PredictionStorage
 
 
 st.set_page_config(
@@ -76,10 +81,26 @@ toolbar = st.columns([1, 1, 2, 2])
 with toolbar[0]:
     st.selectbox("Season", ["2025/26", "2024/25"])
 with toolbar[1]:
-    st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
+    fixture_filter = st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
 with toolbar[3]:
     st.write("")
-    st.button("↻  Refresh fixtures", type="primary", use_container_width=True)
+    refresh_clicked = st.button(
+        "↻  Refresh fixtures", type="primary", use_container_width=True
+    )
+
+fixture_storage = FixtureStorage(Path(__file__).with_name("data.csv"))
+if refresh_clicked:
+    try:
+        with st.spinner("Refreshing Premier League fixtures..."):
+            matches_by_date = FootballDataClient().get_yesterday_and_tomorrow_matches()
+            refreshed_matches = [
+                match for matches in matches_by_date.values() for match in matches
+            ]
+            fixture_storage.merge_matchday(refreshed_matches)
+    except (requests.exceptions.RequestException, ValueError) as error:
+        st.error(f"Could not refresh fixtures: {error}")
+    else:
+        st.success(f"Refreshed {len(refreshed_matches)} Premier League fixtures.")
 
 metrics = st.columns(3)
 for column, label, value in zip(
@@ -98,17 +119,46 @@ if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
     st.info("Leaderboard scores will appear here.")
 else:
+    prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
+    all_fixtures = fixture_storage.load_matchday()
+    fixtures = all_fixtures
+    completed_statuses = {"complete", "completed", "finished"}
+    statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()
+    if fixture_filter == "Upcoming":
+        kickoff_times = pd.to_datetime(fixtures["match_date"], errors="coerce", utc=True)
+        future_kickoffs = kickoff_times > pd.Timestamp.now(tz="UTC")
+        fixtures = fixtures.loc[future_kickoffs & ~statuses.isin(completed_statuses)]
+    elif fixture_filter == "Completed":
+        fixtures = fixtures.loc[statuses.isin(completed_statuses)]
+
+    stored_predictions = prediction_storage.load_predictions()
+    disk_predictions = {
+        str(row["match_id"]): str(row["prediction"])
+        for row in stored_predictions.to_dict("records")
+        if str(row.get("match_id", ""))
+    }
+
     heading, action = st.columns([3, 1])
     with heading:
         st.markdown('<div class="section-head"><p class="section-title">Matchday fixtures</p></div>', unsafe_allow_html=True)
     with action:
         st.write("")
-        st.button("✦  Predict upcoming", use_container_width=True)
+        predict_clicked = st.button("✦  Predict upcoming", use_container_width=True, key="predict_upcoming")
 
-    fixtures = FixtureStorage(Path(__file__).with_name("data.csv")).load_matchday()
-    if fixtures.empty:
+    if predict_clicked:
+        if all_fixtures.empty:
+            st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
+        else:
+            with st.spinner("Gemma is calling the match..."):
+                new_predictions = predict_upcoming(all_fixtures, prediction_storage)
+                st.session_state.predictions = {**disk_predictions, **new_predictions}
+
+    if all_fixtures.empty:
         st.info("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
+    elif fixtures.empty:
+        st.info(f"No {fixture_filter.lower()} fixtures found.")
 
+    predictions = st.session_state.setdefault("predictions", disk_predictions)
     for fixture in fixtures.to_dict("records"):
         kickoff = fixture.get("match_date", "")
         home = fixture.get("home_team", "")
@@ -121,7 +171,8 @@ else:
             else "vs"
         )
         status = str(fixture.get("status", "")).upper() or "UPCOMING"
-        prediction = "Prediction pending"
+        match_id = str(fixture.get("match_id", ""))
+        prediction = predictions.get(match_id, "Prediction pending")
         st.markdown(
             '<div class="match-card">'
             f'<div class="match-date">{kickoff}</div>'

@@ -58,6 +58,17 @@ class FootballDataClient:
             if isinstance(match, dict) and self._is_target_league(match)
         ]
 
+    def get_yesterday_and_tomorrow_matches(
+        self,
+    ) -> dict[dt.date, list[dict[str, Any]]]:
+        """Return England Premier League matches for yesterday and tomorrow."""
+        today = dt.date.today()
+        match_dates = (
+            today - dt.timedelta(days=1),
+            today + dt.timedelta(days=1),
+        )
+        return {match_date: self.get_matches(match_date) for match_date in match_dates}
+
     @classmethod
     def _is_target_league(cls, match: dict[str, Any]) -> bool:
         league = match.get("league", "")
@@ -100,17 +111,15 @@ def format_match(match: dict[str, Any]) -> str:
 if __name__ == "__main__":
     client = FootballDataClient()
     storage = FixtureStorage(Path(__file__).with_name("data.csv"))
-    yesterday = dt.date.today() - dt.timedelta(days=1)
     try:
-        matches = client.get_matches(yesterday)
+        matches_by_date = client.get_yesterday_and_tomorrow_matches()
     except requests.exceptions.RequestException as error:
         print(f"Could not retrieve match data: {error}")
     else:
-        storage.save_matchday(matches)
-        stored_matches = storage.load_matchday()
-        print(f"{client.TARGET_LEAGUE} matches for {yesterday.isoformat()}: {len(stored_matches)}")
-        for match in stored_matches.to_dict("records"):
-            print(
-                f"{match['league']} | {match['match_date']} | "
-                f"{match['home_team']} {match['home_score']}–{match['away_score']} {match['away_team']}"
-            )
+        storage.merge_matchday(
+            [match for matches in matches_by_date.values() for match in matches]
+        )
+        for match_date, matches in matches_by_date.items():
+            print(f"{client.TARGET_LEAGUE} matches for {match_date}: {len(matches)}")
+            for match in matches:
+                print(format_match(match))
