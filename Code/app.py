@@ -7,7 +7,11 @@ import requests
 import streamlit as st
 
 from football_data import FootballDataClient
-from prediction import get_prediction_model, predict_upcoming
+from prediction import (
+    get_prediction_models,
+    predict_upcoming_for_models,
+    start_daily_prediction_scheduler,
+)
 from storage import FixtureStorage, PredictionStorage
 
 
@@ -16,6 +20,17 @@ st.set_page_config(
     page_icon="⚽",
     layout="wide",
 )
+
+
+@st.cache_resource
+def _start_daily_prediction_scheduler():
+    return start_daily_prediction_scheduler(
+        FixtureStorage(Path(__file__).with_name("data.csv")),
+        PredictionStorage(Path(__file__).with_name("predictions.csv")),
+    )
+
+
+_start_daily_prediction_scheduler()
 
 st.markdown(
     """
@@ -132,11 +147,18 @@ else:
         fixtures = fixtures.loc[statuses.isin(completed_statuses)]
 
     stored_predictions = prediction_storage.load_predictions()
-    disk_predictions = {
-        str(row["match_id"]): str(row["prediction"])
-        for row in stored_predictions.to_dict("records")
-        if str(row.get("match_id", ""))
+    active_model_names = {
+        model.model_id: model.name for model in get_prediction_models()
     }
+    disk_predictions: dict[str, dict[str, str]] = {}
+    for row in stored_predictions.to_dict("records"):
+        match_id = str(row.get("match_id", ""))
+        model_id = str(row.get("model", ""))
+        if match_id and model_id:
+            model_name = active_model_names.get(model_id, model_id)
+            disk_predictions.setdefault(model_name, {})[match_id] = str(
+                row["prediction"]
+            )
 
     heading, action = st.columns([3, 1])
     with heading:
@@ -149,17 +171,36 @@ else:
         if all_fixtures.empty:
             st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
         else:
-            with st.spinner("The selected model is calling the match..."):
-                prediction_model = get_prediction_model("gemma")
-                new_predictions = predict_upcoming(prediction_model, all_fixtures, prediction_storage)
-                st.session_state.predictions = {**disk_predictions, **new_predictions}
+            with st.spinner("The models are calling the match..."):
+                new_predictions = predict_upcoming_for_models(
+                    all_fixtures, prediction_storage
+                )
+                merged_predictions = {
+                    model_name: dict(model_predictions)
+                    for model_name, model_predictions in disk_predictions.items()
+                }
+                for model_name, model_predictions in new_predictions.items():
+                    merged_predictions.setdefault(model_name, {}).update(
+                        model_predictions
+                    )
+                st.session_state.model_predictions = merged_predictions
 
     if all_fixtures.empty:
         st.info("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
     elif fixtures.empty:
         st.info(f"No {fixture_filter.lower()} fixtures found.")
 
-    predictions = st.session_state.setdefault("predictions", disk_predictions)
+    session_predictions = st.session_state.get("model_predictions", {})
+    predictions = {
+        model_name: dict(model_predictions)
+        for model_name, model_predictions in disk_predictions.items()
+    }
+    if isinstance(session_predictions, dict):
+        for model_name, model_predictions in session_predictions.items():
+            if isinstance(model_predictions, dict):
+                predictions.setdefault(model_name, {}).update(model_predictions)
+    st.session_state.model_predictions = predictions
+
     for fixture in fixtures.to_dict("records"):
         kickoff = fixture.get("match_date", "")
         home = fixture.get("home_team", "")
@@ -173,7 +214,12 @@ else:
         )
         status = str(fixture.get("status", "")).upper() or "UPCOMING"
         match_id = str(fixture.get("match_id", ""))
-        prediction = predictions.get(match_id, "Prediction pending")
+        match_predictions = [
+            f"{model_name}: {model_predictions[match_id]}"
+            for model_name, model_predictions in predictions.items()
+            if match_id in model_predictions
+        ]
+        prediction = " · ".join(match_predictions) or "Prediction pending"
         st.markdown(
             '<div class="match-card">'
             f'<div class="match-date">{kickoff}</div>'
