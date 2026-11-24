@@ -29,5 +29,9 @@ When the Streamlit app starts, it runs predictions for the next day's Premier
 League fixtures and then repeats daily at 06:00 in the host's local timezone
 while the app process is running. It fetches the fixtures before prediction.
 Every provider registered in `Code/prediction.py` is called. The "Predict
-upcoming" button runs those same registered providers on the stored upcoming
-fixtures immediately.
+missing" button runs those same registered providers on every stored fixture
+without a saved prediction, whether or not the match has completed. Model input
+contains only the target's teams and kickoff plus earlier fixture results and
+predictions recorded before that kickoff; the target's result data is excluded.
+Gemma requests are spaced at least two seconds apart and retry transient 503
+overload errors up to three times. Failed predictions are not displayed or saved.

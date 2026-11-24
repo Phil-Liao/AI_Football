@@ -154,24 +154,24 @@ else:
     for row in stored_predictions.to_dict("records"):
         match_id = str(row.get("match_id", ""))
         model_id = str(row.get("model", ""))
+        prediction = str(row.get("prediction", "")).strip()
         if match_id and model_id:
-            model_name = active_model_names.get(model_id, model_id)
-            disk_predictions.setdefault(model_name, {})[match_id] = str(
-                row["prediction"]
-            )
+            if prediction and not prediction.lower().startswith("prediction unavailable"):
+                model_name = active_model_names.get(model_id, model_id)
+                disk_predictions.setdefault(model_name, {})[match_id] = prediction
 
     heading, action = st.columns([3, 1])
     with heading:
         st.markdown('<div class="section-head"><p class="section-title">Matchday fixtures</p></div>', unsafe_allow_html=True)
     with action:
         st.write("")
-        predict_clicked = st.button("✦  Predict upcoming", use_container_width=True, key="predict_upcoming")
+        predict_clicked = st.button("✦  Predict missing", use_container_width=True, key="predict_upcoming")
 
     if predict_clicked:
         if all_fixtures.empty:
             st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
         else:
-            with st.spinner("The models are calling the match..."):
+            with st.spinner("The models are predicting missing matches..."):
                 new_predictions = predict_upcoming_for_models(
                     all_fixtures, prediction_storage
                 )
@@ -198,7 +198,12 @@ else:
     if isinstance(session_predictions, dict):
         for model_name, model_predictions in session_predictions.items():
             if isinstance(model_predictions, dict):
-                predictions.setdefault(model_name, {}).update(model_predictions)
+                for match_id, value in model_predictions.items():
+                    if not isinstance(value, str):
+                        continue
+                    value = value.strip()
+                    if value and not value.lower().startswith("prediction unavailable"):
+                        predictions.setdefault(model_name, {})[match_id] = value
     st.session_state.model_predictions = predictions
 
     for fixture in fixtures.to_dict("records"):

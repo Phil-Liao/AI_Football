@@ -2,16 +2,28 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
+import threading
+import time
 from typing import Any, Iterable
 
 import dotenv
 import pandas as pd
 from google import genai
+from google.genai import errors
 
 
 MODEL = "gemma-4-26b-a4b-it"
-PROMPT_VERSION = "1"
+PROMPT_VERSION = "2"
+MIN_REQUEST_INTERVAL_SECONDS = 2.0
+MAX_503_RETRIES = 3
+RETRY_BASE_SECONDS = 1.0
+
+LOGGER = logging.getLogger(__name__)
+_REQUEST_LOCK = threading.Lock()
+_last_request_started = 0.0
 
 
 def get_client() -> genai.Client:
@@ -22,7 +34,24 @@ def get_client() -> genai.Client:
     return genai.Client()
 
 
-def predict_match(fixture: dict[str, Any]) -> str:
+def _generate_content(client: genai.Client, prompt: str) -> Any:
+    global _last_request_started
+    with _REQUEST_LOCK:
+        elapsed = time.monotonic() - _last_request_started
+        if _last_request_started and elapsed < MIN_REQUEST_INTERVAL_SECONDS:
+            time.sleep(MIN_REQUEST_INTERVAL_SECONDS - elapsed)
+        _last_request_started = time.monotonic()
+        return client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+        )
+
+
+def _is_overloaded(error: errors.APIError) -> bool:
+    return error.code == 503 and error.status == "UNAVAILABLE"
+
+
+def predict_match(fixture: dict[str, Any]) -> str | None:
     """Return a short predicted outcome for one Premier League fixture."""
     home_team = fixture.get("home_team", "Home team")
     away_team = fixture.get("away_team", "Away team")
@@ -39,19 +68,46 @@ def predict_match(fixture: dict[str, Any]) -> str:
         f"Away team: {away_team}\n"
     )
 
-    raw_match = fixture.get("raw_match")
-    if raw_match:
-        prompt += f"Available match data: {raw_match}\n"
+    historical_context = fixture.get("historical_context", [])
+    if historical_context:
+        prompt += (
+            "\nPre-match context from earlier fixtures only. "
+            "Do not infer the result from any information outside this context:\n"
+            f"{json.dumps(historical_context, ensure_ascii=False)}\n"
+        )
 
     try:
-        response = get_client().models.generate_content(
-            model=MODEL,
-            contents=prompt,
-        )
-    except Exception as error:
-        return f"Prediction unavailable: {error}"
+        client = get_client()
+    except ValueError as error:
+        LOGGER.warning("Gemma client unavailable: %s", error)
+        return None
 
-    return (response.text or "Prediction unavailable").strip()
+    for attempt in range(MAX_503_RETRIES + 1):
+        try:
+            response = _generate_content(client, prompt)
+            return (response.text or "").strip() or None
+        except errors.APIError as error:
+            if not _is_overloaded(error):
+                LOGGER.warning("Gemma prediction failed: %s", error)
+                return None
+            if attempt == MAX_503_RETRIES:
+                LOGGER.warning(
+                    "Gemma prediction still unavailable after %s attempts: %s",
+                    attempt + 1,
+                    error,
+                )
+                return None
+
+            delay = RETRY_BASE_SECONDS * (2**attempt)
+            LOGGER.warning(
+                "Gemma is overloaded; retrying attempt %s of %s in %.1f seconds",
+                attempt + 2,
+                MAX_503_RETRIES + 1,
+                delay,
+            )
+            time.sleep(delay)
+
+    return None
 
 
 def predict_fixtures(fixtures: Iterable[dict[str, Any]]) -> dict[str, str]:
@@ -61,7 +117,9 @@ def predict_fixtures(fixtures: Iterable[dict[str, Any]]) -> dict[str, str]:
         match_id = str(fixture.get("match_id", ""))
         if not match_id:
             match_id = f"{fixture.get('home_team', '')}-{fixture.get('away_team', '')}"
-        predictions[match_id] = predict_match(fixture)
+        prediction = predict_match(fixture)
+        if prediction and not prediction.lower().startswith("prediction unavailable"):
+            predictions[match_id] = prediction
     return predictions
 
 
@@ -72,7 +130,7 @@ class GemmaPredictionModel:
     model_id = MODEL
     prompt_version = PROMPT_VERSION
 
-    def predict_match(self, fixture: dict[str, Any]) -> str:
+    def predict_match(self, fixture: dict[str, Any]) -> str | None:
         return predict_match(fixture)
 
 
