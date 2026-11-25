@@ -1,7 +1,9 @@
 """UI-only prototype for the AI Football Premier League dashboard."""
 
+import html
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import requests
 import streamlit as st
@@ -49,6 +51,15 @@ st.markdown(
     .metric-value { color:#102b23; font-size:1.8rem; font-weight:800; letter-spacing:-.05em; margin-top:.25rem; }
     .section-head { display:flex; justify-content:space-between; align-items:end; margin:2.4rem 0 1rem; }
     .section-title { font-size:1.45rem; letter-spacing:-.045em; font-weight:800; margin:0; color:#102b23; }
+    .leaderboard-table-wrap { width:100%; overflow-x:auto; background:#fff; border:1px solid #e5ebe5; border-radius:14px; }
+    .leaderboard-table { width:100%; min-width:540px; border-collapse:collapse; font-size:.88rem; }
+    .leaderboard-table th, .leaderboard-table td { padding:.85rem 1rem; text-align:left; white-space:nowrap; }
+    .leaderboard-table thead th { background:#e3f5df; color:#102b23; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .leaderboard-table tbody th { color:#19372b; font-weight:700; }
+    .leaderboard-table tbody td { border-top:1px solid #e5ebe5; color:#19372b; }
+    .leaderboard-table .numeric-cell { text-align:right; font-variant-numeric:tabular-nums; }
+    .leaderboard-table .points-cell { color:#176b4c; font-weight:800; }
+    .leaderboard-table tbody tr:hover th, .leaderboard-table tbody tr:hover td { background:#f5f7f2; }
     .match-card { display:flex; align-items:center; gap:1rem; background:#fff; border:1px solid #e5ebe5; border-radius:14px; padding:1rem 1.15rem; margin:.55rem 0; }
     .match-date { min-width:120px; color:#718078; font: .72rem 'DM Mono', monospace; }
     .teams { flex:1; font-weight:700; color:#19372b; }
@@ -186,6 +197,110 @@ else:
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
+    st.markdown("#### Points over time")
+    scores = dashboard["scores"]
+    if scores.empty:
+        st.info("Points history will appear here after completed matches are scored.")
+    else:
+        chart_scores = scores.copy()
+        chart_scores["match_date"] = (
+            pd.to_datetime(chart_scores["match_date"], errors="coerce", utc=True)
+            .dt.tz_localize(None)
+            .dt.normalize()
+        )
+        chart_scores["points"] = pd.to_numeric(
+            chart_scores["points"], errors="coerce"
+        ).fillna(0)
+        chart_scores = chart_scores.dropna(subset=["match_date"])
+        if selected_season is not None:
+            season_start = pd.Timestamp(
+                year=selected_start_year, month=8, day=1
+            )
+            season_end = pd.Timestamp(
+                year=selected_start_year + 1, month=8, day=1
+            )
+            chart_scores = chart_scores.loc[
+                (chart_scores["match_date"] >= season_start)
+                & (chart_scores["match_date"] < season_end)
+            ]
+
+        if chart_scores.empty:
+            st.info("No scored matches found for this season.")
+        else:
+            chart_scores["model"] = chart_scores["model"].map(
+                lambda model_id: active_model_names.get(
+                    str(model_id), str(model_id)
+                )
+            )
+            daily_points = chart_scores.groupby(
+                ["match_date", "model"], as_index=False
+            )["points"].sum()
+            points_over_time = (
+                daily_points.pivot(
+                    index="match_date", columns="model", values="points"
+                )
+                .fillna(0)
+                .sort_index()
+                .cumsum()
+            )
+            chart_data = points_over_time.rename_axis("match_date").reset_index().melt(
+                id_vars="match_date",
+                var_name="model",
+                value_name="points",
+            )
+            points_chart = (
+                alt.Chart(chart_data)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("match_date:T", title="Match date"),
+                    y=alt.Y(
+                        "points:Q",
+                        title="Cumulative points",
+                        scale=alt.Scale(domainMin=0),
+                    ),
+                    color=alt.Color(
+                        "model:N",
+                        title="Model",
+                        scale=alt.Scale(
+                            range=["#176b4c", "#247b53", "#8fbe9a", "#102b23"]
+                        ),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("match_date:T", title="Match date"),
+                        alt.Tooltip("model:N", title="Model"),
+                        alt.Tooltip("points:Q", title="Cumulative points"),
+                    ],
+                )
+                .properties(
+                    title="Cumulative Model Points by Match Date",
+                    height=350,
+                    background="#ffffff",
+                )
+                .configure_axis(
+                    domainColor="#dce5dc",
+                    gridColor="#e5ebe5",
+                    labelColor="#718078",
+                    labelFont="DM Sans",
+                    tickColor="#dce5dc",
+                    titleColor="#668071",
+                    titleFont="DM Sans",
+                )
+                .configure_legend(
+                    labelColor="#40564a",
+                    labelFont="DM Sans",
+                    titleColor="#102b23",
+                    titleFont="DM Sans",
+                )
+                .configure_title(
+                    anchor="start",
+                    color="#102b23",
+                    font="DM Sans",
+                    fontSize=16,
+                )
+                .configure_view(stroke="#e5ebe5")
+            )
+            st.altair_chart(points_chart, use_container_width=True)
+
     leaderboard = dashboard["leaderboard"]
     if leaderboard.empty:
         st.info("Leaderboard scores will appear here after completed matches are scored.")
@@ -202,7 +317,37 @@ if page == "Leaderboard":
                     "Accuracy": f'{float(row["accuracy"]):.1%}',
                 }
             )
-        st.dataframe(display_rows, use_container_width=True, hide_index=True)
+        columns = ["Model", "Predictions", "Correct", "Points", "Accuracy"]
+        header_cells = "".join(
+            f'<th scope="col" class="{"numeric-cell" if column != "Model" else ""}">'
+            f"{html.escape(column)}</th>"
+            for column in columns
+        )
+        table_rows = []
+        for row in display_rows:
+            model_cell = (
+                f'<th scope="row">{html.escape(str(row["Model"]))}</th>'
+            )
+            value_cells = []
+            for column in columns[1:]:
+                classes = "numeric-cell"
+                if column == "Points":
+                    classes += " points-cell"
+                value_cells.append(
+                    f'<td class="{classes}">'
+                    f"{html.escape(str(row[column]))}</td>"
+                )
+            table_rows.append(
+                f"<tr>{model_cell}{''.join(value_cells)}</tr>"
+            )
+        st.markdown(
+            '<div class="leaderboard-table-wrap">'
+            '<table class="leaderboard-table">'
+            f"<thead><tr>{header_cells}</tr></thead>"
+            f"<tbody>{''.join(table_rows)}</tbody>"
+            "</table></div>",
+            unsafe_allow_html=True,
+        )
 else:
     fixtures = all_fixtures
     completed_statuses = {"complete", "completed", "finished"}
