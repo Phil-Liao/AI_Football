@@ -14,6 +14,14 @@ A simple match prediction platform with Gemma 4 on the English Premiere League
 
 Adding more models and fantasy football scoring policies to compete with substitutions and transfers available between matches
 
+## Architecture
+
+- `Code/app.py` is the Streamlit entrypoint and presentation layer.
+- `Code/main.py` is the central application controller. It owns storage, fixture refresh, scoring, prediction actions, and the daily scheduler.
+- `Code/prediction.py`, `Code/football_data.py`, `Code/scoring.py`, and `Code/storage.py` provide the underlying domain and infrastructure services.
+
+Run the dashboard with `streamlit run Code/app.py`.
+
 ## APIs Used
 
 - [API-Sports](https://api-sports.io/) API: Used to access premire league data.
