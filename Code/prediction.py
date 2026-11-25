@@ -13,7 +13,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from football_data import FootballDataClient
-from storage import FixtureStorage, PredictionStorage
+from scoring import PredictionScorer
+from storage import FixtureStorage, PredictionStorage, ScoreStorage
 
 
 LOGGER = logging.getLogger(__name__)
@@ -102,7 +103,13 @@ def run_daily_predictions(
     """Fetch and predict tomorrow's fixtures with every registered provider."""
     fixture_storage = fixture_storage or FixtureStorage()
     prediction_storage = prediction_storage or PredictionStorage()
+    score_storage = ScoreStorage()
     football_client = football_client or FootballDataClient()
+
+    PredictionScorer(prediction_storage, score_storage).score_completed_fixtures(
+        fixture_storage.load_matchday()
+    )
+
     tomorrow = (today or date.today()) + timedelta(days=1)
 
     matches = football_client.get_matches(tomorrow)

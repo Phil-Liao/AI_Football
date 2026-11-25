@@ -180,3 +180,60 @@ class PredictionStorage(CsvStorage):
             "status": row.get("status", "stored"),
             "created_at": row.get("created_at") or datetime.now(timezone.utc).isoformat(),
         }
+
+
+class ScoreStorage(CsvStorage):
+    """Store one immutable score row per match/model/prompt combination."""
+
+    COLUMNS = [
+        "match_id", "match_date", "home_team", "away_team", "model",
+        "prompt_version", "prediction", "actual_outcome", "points",
+        "status", "scored_at",
+    ]
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        score_path = Path(path) if path is not None else Path(__file__).with_name("scores.csv")
+        super().__init__(score_path)
+
+    def save_scores(self, scores: list[dict[str, Any]]) -> pd.DataFrame:
+        incoming = pd.DataFrame([self._normalize(row) for row in scores], columns=self.COLUMNS)
+        if incoming.empty:
+            return self.load_scores()
+
+        keys = ["match_id", "model", "prompt_version"]
+        with self._lock():
+            existing = self._load_frame_unlocked()
+            if not existing.empty:
+                existing_keys = existing[keys].astype("string").fillna("").agg("\x1f".join, axis=1)
+                incoming_keys = incoming[keys].astype("string").fillna("").agg("\x1f".join, axis=1)
+                existing = existing.loc[~existing_keys.isin(incoming_keys)].copy()
+
+            combined = pd.concat([existing, incoming], ignore_index=True).reindex(columns=self.COLUMNS)
+            self._atomic_write(combined)
+            return combined
+
+    def load_scores(self) -> pd.DataFrame:
+        with self._lock():
+            return self._load_frame_unlocked()
+
+    def _load_frame_unlocked(self) -> pd.DataFrame:
+        if not self.path.exists():
+            return pd.DataFrame(columns=self.COLUMNS)
+        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
+        return frame.reindex(columns=self.COLUMNS)
+
+    @staticmethod
+    def _normalize(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "match_id": str(row.get("match_id", "")),
+            "match_date": row.get("match_date", ""),
+            "home_team": row.get("home_team", ""),
+            "away_team": row.get("away_team", ""),
+            "model": row.get("model", ""),
+            "prompt_version": str(row.get("prompt_version", "")),
+            "prediction": row.get("prediction", ""),
+            "actual_outcome": row.get("actual_outcome", ""),
+            "points": int(row.get("points", 0)),
+            "status": row.get("status", "scored"),
+            "scored_at": row.get("scored_at") or datetime.now(timezone.utc).isoformat(),
+        }

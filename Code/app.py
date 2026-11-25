@@ -12,7 +12,8 @@ from prediction import (
     predict_upcoming_for_models,
     start_daily_prediction_scheduler,
 )
-from storage import FixtureStorage, PredictionStorage
+from scoring import PredictionScorer
+from storage import FixtureStorage, PredictionStorage, ScoreStorage
 
 
 st.set_page_config(
@@ -117,11 +118,50 @@ if refresh_clicked:
     else:
         st.success(f"Refreshed {len(refreshed_matches)} Premier League fixtures.")
 
+prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
+score_storage = ScoreStorage(Path(__file__).with_name("scores.csv"))
+scorer = PredictionScorer(prediction_storage, score_storage)
+all_fixtures = fixture_storage.load_matchday()
+scorer.score_completed_fixtures(all_fixtures)
+stored_predictions = prediction_storage.load_predictions()
+active_model_names = {model.model_id: model.name for model in get_prediction_models()}
+
+valid_predictions = stored_predictions
+if not stored_predictions.empty:
+    valid_predictions = stored_predictions.loc[
+        stored_predictions["prediction"].fillna("").astype(str).str.strip().ne("")
+        & ~stored_predictions["prediction"].fillna("").astype(str).str.lower().str.startswith(
+            "prediction unavailable"
+        )
+    ]
+gemma_model = next(
+    (model for model in get_prediction_models()),
+    None,
+)
+gemma_prediction_count = 0
+if gemma_model is not None and not valid_predictions.empty:
+    gemma_prediction_count = int(
+        valid_predictions.loc[
+            valid_predictions["model"] == gemma_model.model_id,
+            "match_id",
+        ].nunique()
+    )
+
+scores = score_storage.load_scores()
+gemma_points = 0
+if gemma_model is not None and not scores.empty:
+    gemma_points = int(
+        pd.to_numeric(
+            scores.loc[scores["model"] == gemma_model.model_id, "points"],
+            errors="coerce",
+        ).fillna(0).sum()
+    )
+
 metrics = st.columns(3)
 for column, label, value in zip(
     metrics,
     ["Season fixtures", "Gemma predictions", "Bot points"],
-    ["38", "—", "—"],
+    [str(len(all_fixtures)), str(gemma_prediction_count), str(gemma_points)],
 ):
     with column:
         st.markdown(
@@ -132,7 +172,23 @@ for column, label, value in zip(
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
-    st.info("Leaderboard scores will appear here.")
+    leaderboard = scorer.leaderboard()
+    if leaderboard.empty:
+        st.info("Leaderboard scores will appear here after completed matches are scored.")
+    else:
+        display_rows = []
+        for row in leaderboard.to_dict("records"):
+            model_name = active_model_names.get(str(row["model"]), str(row["model"]))
+            display_rows.append(
+                {
+                    "Model": model_name,
+                    "Predictions": int(row["predictions"]),
+                    "Correct": int(row["correct"]),
+                    "Points": int(row["points"]),
+                    "Accuracy": f'{float(row["accuracy"]):.1%}',
+                }
+            )
+        st.dataframe(display_rows, use_container_width=True, hide_index=True)
 else:
     prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
     all_fixtures = fixture_storage.load_matchday()

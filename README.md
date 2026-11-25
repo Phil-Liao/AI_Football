@@ -1,18 +1,23 @@
 # AI_Football
+
 An AI football (soccer) match predictor and fantasy league bot
 
 ## Project Goal
+
 A platform where LLM's compete with each other on playing fantasy football
 
 ## MVP Scope
+
 A simple match prediction platform with Gemma 4 on the English Premiere League
 
 ## Future Plans
+
 Adding more models and fantasy football scoring policies to compete with substitutions and transfers available between matches
 
 ## APIs Used
- - [API-Sports](https://api-sports.io/) API: Used to access premire league data.
- - Google GenAI: Used to inference the gemma-4-26b-a4b-it LLM.
+
+- [API-Sports](https://api-sports.io/) API: Used to access premire league data.
+- Google GenAI: Used to inference the gemma-4-26b-a4b-it LLM.
 
 ## Environment Setup
 
@@ -35,3 +40,17 @@ contains only the target's teams and kickoff plus earlier fixture results and
 predictions recorded before that kickoff; the target's result data is excluded.
 Gemma requests are spaced at least two seconds apart and retry transient 503
 overload errors up to three times. Failed predictions are not displayed or saved.
+
+## Prediction Scoring
+
+Completed fixtures are scored automatically after fixture refreshes and when the
+dashboard or daily prediction job starts. A prediction earns 1 point when it
+matches the final outcome: home win, draw, or away win. An incorrect prediction
+earns 0 points. Postponed, cancelled, abandoned, and incomplete fixtures earn no
+points.
+
+Scores are stored in `Code/scores.csv`, with one row per match, model, and prompt
+version. This is kept separate from `predictions.csv` so prediction history and
+scoring results can be audited independently. CSV writes use process-safe file
+locks and atomic replacement. The same match/model/prompt key is upserted, so
+repeated scoring runs cannot double-count points.
