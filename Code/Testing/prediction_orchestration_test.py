@@ -9,6 +9,7 @@ from google.genai import errors
 from requests import ConnectionError, Response
 
 import gemma4_prediction
+import gemini_flash_lite_prediction
 import prediction
 from storage import FixtureStorage, PredictionStorage
 
@@ -237,6 +238,85 @@ class PredictionOrchestrationTests(unittest.TestCase):
         self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
         self.assertNotIn("999", prompt)
         self.assertNotIn("888", prompt)
+
+    def test_gemini_flash_lite_uses_second_key_timeout_and_shared_prompt(self) -> None:
+        client = unittest.mock.Mock()
+        client.models.generate_content.return_value.text = "Draw"
+        fixture = {
+            "match_date": "2026-11-25 12:00:00",
+            "home_team": "Target Home",
+            "away_team": "Target Away",
+            "home_score": "999",
+            "raw_match": '{"winner_text":"TARGET_RESULT_TOKEN"}',
+        }
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY2": "test-key"}),
+            patch.object(gemini_flash_lite_prediction.dotenv, "load_dotenv"),
+            patch.object(
+                gemini_flash_lite_prediction.genai,
+                "Client",
+                return_value=client,
+            ) as client_factory,
+        ):
+            result = gemini_flash_lite_prediction.predict_match(fixture)
+
+        self.assertEqual(result, "Draw")
+        client_factory.assert_called_once_with(
+            api_key="test-key",
+            http_options={
+                "timeout": gemini_flash_lite_prediction.REQUEST_TIMEOUT_MS
+            },
+        )
+        prompt = client.models.generate_content.call_args.kwargs["contents"]
+        self.assertEqual(
+            client.models.generate_content.call_args.kwargs["model"],
+            "gemini-3.1-flash-lite",
+        )
+        self.assertIn("Target Home", prompt)
+        self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
+        self.assertNotIn("999", prompt)
+
+    def test_gemini_flash_lite_retries_rate_limit_responses(self) -> None:
+        response = Response()
+        response.status_code = 429
+        response._content = (
+            b'{"error":{"code":429,"message":"busy","status":"RESOURCE_EXHAUSTED"}}'
+        )
+        response._content_consumed = True
+        client = unittest.mock.Mock()
+        client.models.generate_content.side_effect = [
+            errors.ClientError(429, response),
+            unittest.mock.Mock(text="Home win"),
+        ]
+
+        with (
+            patch.object(
+                gemini_flash_lite_prediction,
+                "get_client",
+                return_value=client,
+            ),
+            patch.object(
+                gemini_flash_lite_prediction,
+                "_last_request_started",
+                0.0,
+            ),
+            patch.object(
+                gemini_flash_lite_prediction,
+                "MIN_REQUEST_INTERVAL_SECONDS",
+                0.0,
+            ),
+            patch.object(gemini_flash_lite_prediction.time, "sleep") as sleep,
+        ):
+            result = gemini_flash_lite_prediction.predict_match(
+                {"home_team": "Home", "away_team": "Away"}
+            )
+
+        self.assertEqual(result, "Home win")
+        self.assertEqual(client.models.generate_content.call_count, 2)
+        sleep.assert_called_once_with(
+            gemini_flash_lite_prediction.RETRY_BASE_SECONDS
+        )
 
     def test_gemma_retries_503_and_spaces_api_requests(self) -> None:
         client = unittest.mock.Mock()

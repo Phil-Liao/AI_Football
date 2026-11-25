@@ -9,3 +9,13 @@ match_id,match_date,home_team,away_team,model,prediction,prompt_version,status,c
 740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-24T19:54:52.628794+00:00
 740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemma-4-26b-a4b-it,Liverpool win,2,stored,2026-11-24T19:55:34.806813+00:00
 1005426588,2026-11-23 20:00:00,Brentford,Everton,gemma-4-26b-a4b-it,Brentford win,2,stored,2026-11-24T19:56:26.129290+00:00
+1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemini-3.1-flash-lite,Manchester City win,2,stored,2026-11-25T21:56:20.730826+00:00
+740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemini-3.1-flash-lite,Aston Villa win,2,stored,2026-11-25T21:56:22.663866+00:00
+740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemini-3.1-flash-lite,Chelsea win,2,stored,2026-11-25T21:56:24.697272+00:00
+1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:26.707392+00:00
+1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:28.696086+00:00
+1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemini-3.1-flash-lite,Tottenham Hotspur win,2,stored,2026-11-25T21:56:30.717286+00:00
+1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:32.735664+00:00
+740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemini-3.1-flash-lite,Brighton & Hove Albion win,2,stored,2026-11-25T21:56:34.819116+00:00
+740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemini-3.1-flash-lite,Liverpool win,2,stored,2026-11-25T21:56:36.893698+00:00
+1005426588,2026-11-23 20:00:00,Brentford,Everton,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:38.734842+00:00
