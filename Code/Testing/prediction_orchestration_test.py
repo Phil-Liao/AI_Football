@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 from google.genai import errors
-from requests import Response
+from requests import ConnectionError, Response
 
 import gemma4_prediction
 import prediction
@@ -343,6 +343,22 @@ class PredictionOrchestrationTests(unittest.TestCase):
         self.assertEqual(
             result, {"gemma": {"tomorrow": "gemma prediction for Home"}}
         )
+
+    def test_daily_run_returns_empty_when_api_is_unavailable(self) -> None:
+        fake_client = unittest.mock.Mock()
+        fake_client.get_matches.side_effect = ConnectionError("network unavailable")
+
+        with tempfile.TemporaryDirectory() as directory:
+            fixture_storage = FixtureStorage(Path(directory) / "fixtures.csv")
+            prediction_storage = PredictionStorage(Path(directory) / "predictions.csv")
+            result = prediction.run_daily_predictions(
+                fixture_storage,
+                prediction_storage,
+                fake_client,
+                today=date(2026, 11, 24),
+            )
+
+        self.assertEqual(result, {})
 
     @patch("prediction.BackgroundScheduler")
     def test_scheduler_runs_on_startup_and_repeats_daily(self, scheduler_factory) -> None:

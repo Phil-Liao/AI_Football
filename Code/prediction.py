@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable, Protocol, TypeGuard
 
 import pandas as pd
+import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -143,7 +144,12 @@ def run_daily_predictions(
 
     tomorrow = (today or date.today()) + timedelta(days=1)
 
-    matches = football_client.get_matches(tomorrow)
+    try:
+        matches = football_client.get_matches(tomorrow)
+    except (requests.exceptions.RequestException, ValueError, OSError) as error:
+        LOGGER.warning("Daily fixture refresh failed: %s", error)
+        return {}
+
     if not matches:
         LOGGER.info("No fixtures found for %s; skipping daily predictions", tomorrow)
         return {}

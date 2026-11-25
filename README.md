@@ -156,7 +156,7 @@ $env:PYTHONPATH="Code"
 python -m unittest discover -s Code/Testing -p '*_test.py'
 ```
 
-Some tests make live API requests and require valid credentials in `Code/.env`.
+Some tests make API requests and require valid credentials in `Code/.env`.
 
 ## Roadmap
 
