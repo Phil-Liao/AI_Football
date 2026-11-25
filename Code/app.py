@@ -32,13 +32,15 @@ st.markdown(
     html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
     .stApp { background: #f5f7f2; color: var(--ink); }
     [data-testid="stHeader"] { background: transparent; }
-    [data-testid="stSidebar"] { background: #102b23; }
-    [data-testid="stSidebar"] * { color: #eff7ed !important; }
     .block-container { max-width: 1220px; padding-top: 1.5rem; padding-bottom: 3rem; }
-    .topline { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; }
     .brand { font-weight:800; font-size:1.05rem; letter-spacing:-.04em; color:#102b23; }
     .brand span { color:#247b53; }
     .league-pill { background:#e3f5df; color:#267443; border-radius:99px; padding:.42rem .75rem; font-size:.72rem; font-weight:700; letter-spacing:.08em; }
+    .top-nav { display:flex; justify-content:center; align-items:center; gap:1.5rem; border-bottom:1px solid #dce5dc; }
+    .top-nav a { position:relative; display:block; padding:.5rem .15rem .65rem; color:#40564a !important; font-size:.9rem; font-weight:700; text-decoration:none; white-space:nowrap; }
+    .top-nav a:hover, .top-nav a.active { color:#102b23 !important; }
+    .top-nav a.active::after { content:""; position:absolute; right:0; bottom:-1px; left:0; height:3px; background:#176b4c; border-radius:3px 3px 0 0; }
+    .top-nav a:focus-visible { outline:3px solid #247b53; outline-offset:3px; border-radius:2px; }
     .eyebrow { text-transform:uppercase; letter-spacing:.16em; font:500 .69rem 'DM Mono', monospace; color:#668071; }
     .hero-title { font-size:clamp(2.25rem, 5vw, 4.1rem); line-height:1.04; font-weight:800; letter-spacing:-.065em; color:#102b23; margin:.6rem 0 .8rem; }
     .hero-copy { color:#718078; font-size:1rem; margin-bottom:1.6rem; }
@@ -69,11 +71,36 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    '<div class="topline"><div class="brand">TOUCHLINE <span>AI</span></div>'
-    '<div class="league-pill">PREMIER LEAGUE</div></div>',
-    unsafe_allow_html=True,
-)
+topbar = st.columns([1.2, 1.6, 1])
+page = st.query_params.get("page", "Matchday")
+if page not in {"Matchday", "Leaderboard"}:
+    page = "Matchday"
+matchday_active = " active" if page == "Matchday" else ""
+matchday_current = ' aria-current="page"' if page == "Matchday" else ""
+leaderboard_active = " active" if page == "Leaderboard" else ""
+leaderboard_current = ' aria-current="page"' if page == "Leaderboard" else ""
+
+with topbar[0]:
+    st.markdown(
+        '<div class="brand">TOUCHLINE <span>AI</span></div>',
+        unsafe_allow_html=True,
+    )
+with topbar[1]:
+    st.markdown(
+        '<nav class="top-nav" aria-label="Workspace">'
+        f'<a href="?page=Matchday" target="_self" class="top-nav-link{matchday_active}"'
+        f'{matchday_current}>Matchday</a>'
+        f'<a href="?page=Leaderboard" target="_self" class="top-nav-link{leaderboard_active}"'
+        f'{leaderboard_current}>Leaderboard</a>'
+        '</nav>',
+        unsafe_allow_html=True,
+    )
+with topbar[2]:
+    st.markdown(
+        '<div style="text-align:right"><span class="league-pill">PREMIER LEAGUE</span></div>',
+        unsafe_allow_html=True,
+    )
+
 st.markdown('<div class="eyebrow">THE BEAUTIFUL GAME, WITH A SECOND OPINION</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Every match has<br>another point of view.</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-copy">Prediction models call the fixtures. The table keeps score.</div>', unsafe_allow_html=True)
@@ -125,21 +152,6 @@ stored_predictions = dashboard["predictions"]
 active_model_names = dashboard["active_model_names"]
 model_summaries = dashboard.get("model_summaries", [])
 
-with st.sidebar:
-    st.markdown("## ⚽ Touchline AI")
-    st.caption("PREMIER LEAGUE")
-    st.divider()
-    page = st.radio("Workspace", ["Matchday", "Leaderboard"], label_visibility="collapsed")
-    st.divider()
-    st.caption("PREDICTION MODELS")
-    if model_summaries:
-        for model in model_summaries:
-            st.markdown(
-                f"**{model['name']}**  \n`{model['model_id']}`"
-            )
-    else:
-        st.caption("No prediction providers registered.")
-
 prediction_count = sum(
     int(model["prediction_count"])
     for model in model_summaries
@@ -161,6 +173,16 @@ for column, label, value in zip(
             f'<div class="metric-value">{value}</div></div>',
             unsafe_allow_html=True,
         )
+
+st.markdown('<div class="section-head"><p class="section-title">Prediction models</p></div>', unsafe_allow_html=True)
+if model_summaries:
+    model_columns = st.columns(min(3, len(model_summaries)))
+    for index, model in enumerate(model_summaries):
+        with model_columns[index % len(model_columns)]:
+            st.markdown(f"**{model['model_id']}**")
+            st.caption(f"Provider: {model['name']}")
+else:
+    st.caption("No prediction providers registered.")
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
