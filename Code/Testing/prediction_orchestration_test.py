@@ -34,6 +34,36 @@ class PredictionOrchestrationTests(unittest.TestCase):
         response._content_consumed = True
         return errors.ServerError(503, response)
 
+    def test_prediction_models_are_discovered_from_provider_files(self) -> None:
+        fake_models = {
+            "alpha_prediction": FakeModel("Alpha", "alpha-id"),
+            "beta_prediction": FakeModel("Beta", "beta-id"),
+        }
+        provider_modules = {
+            module_name: unittest.mock.Mock(
+                get_prediction_model=unittest.mock.Mock(return_value=model)
+            )
+            for module_name, model in fake_models.items()
+        }
+
+        with (
+            patch.object(
+                prediction.Path,
+                "glob",
+                return_value=[Path("beta_prediction.py"), Path("alpha_prediction.py")],
+            ),
+            patch.object(
+                prediction,
+                "import_module",
+                side_effect=provider_modules.__getitem__,
+            ),
+        ):
+            discovered = prediction.get_prediction_models()
+            selected = prediction.get_prediction_model("beta-id")
+
+        self.assertEqual([model.name for model in discovered], ["Alpha", "Beta"])
+        self.assertIs(selected, fake_models["beta_prediction"])
+
     def test_predicts_only_fixtures_missing_for_each_registered_model(self) -> None:
         fixtures = pd.DataFrame(
             [
