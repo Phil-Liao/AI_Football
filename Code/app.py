@@ -53,7 +53,11 @@ st.markdown(
     .score { min-width:65px; text-align:center; font-weight:800; font-size:1.05rem; color:#18382a; }
     .prediction { min-width:135px; text-align:right; color:#27734b; font-size:.79rem; font-weight:700; }
     .status { min-width:76px; text-align:center; color:#718078; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; }
-    .stButton > button[kind="primary"] { background:#176b4c; border-color:#176b4c; border-radius:9px; font-weight:700; }
+    .stButton > button { color:#102b23 !important; background:#e3f5df; border:1px solid #b8d8be; border-radius:9px; font-weight:700; }
+    .stButton > button:hover { color:#102b23 !important; background:#d2ebcf; border-color:#8fbe9a; }
+    .stButton > button:focus-visible { outline:3px solid #247b53; outline-offset:2px; }
+    .stButton > button[kind="primary"] { color:#fff !important; background:#176b4c; border-color:#176b4c; border-radius:9px; font-weight:700; }
+    .stButton > button[kind="primary"]:hover { color:#fff !important; background:#12583e; border-color:#12583e; }
     @media (max-width: 700px) {
       .match-card { gap:.45rem; padding:.8rem .6rem; flex-wrap:wrap; }
       .match-date { min-width:100%; }
