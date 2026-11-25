@@ -6,14 +6,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from football_data import FootballDataClient
-from prediction import (
-    get_prediction_models,
-    predict_upcoming_for_models,
-    start_daily_prediction_scheduler,
-)
-from scoring import PredictionScorer
-from storage import FixtureStorage, PredictionStorage, ScoreStorage
+from main import MainApplication
 
 
 st.set_page_config(
@@ -24,14 +17,12 @@ st.set_page_config(
 
 
 @st.cache_resource
-def _start_daily_prediction_scheduler():
-    return start_daily_prediction_scheduler(
-        FixtureStorage(Path(__file__).with_name("data.csv")),
-        PredictionStorage(Path(__file__).with_name("predictions.csv")),
-    )
+def _application() -> MainApplication:
+    return MainApplication(Path(__file__).parent)
 
 
-_start_daily_prediction_scheduler()
+application = _application()
+application.start_daily_predictions()
 
 st.markdown(
     """
@@ -74,16 +65,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-with st.sidebar:
-    st.markdown("## ⚽ Touchline AI")
-    st.caption("PREMIER LEAGUE · GEMMA 4")
-    st.divider()
-    page = st.radio("Workspace", ["Matchday", "Leaderboard"], label_visibility="collapsed")
-    st.divider()
-    st.caption("PREDICTION MODEL")
-    st.markdown("**Gemma 4**  \n`gemma-4-26b-a4b-it`")
-    st.caption("A match prediction dashboard for the English Premier League.")
-
 st.markdown(
     '<div class="topline"><div class="brand">TOUCHLINE <span>AI</span></div>'
     '<div class="league-pill">PREMIER LEAGUE</div></div>',
@@ -91,7 +72,7 @@ st.markdown(
 )
 st.markdown('<div class="eyebrow">THE BEAUTIFUL GAME, WITH A SECOND OPINION</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Every match has<br>another point of view.</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-copy">Gemma 4 calls the fixtures. The table keeps score.</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-copy">Prediction models call the fixtures. The table keeps score.</div>', unsafe_allow_html=True)
 
 toolbar = st.columns([1, 1, 2, 2])
 with toolbar[0]:
@@ -104,64 +85,50 @@ with toolbar[3]:
         "↻  Refresh fixtures", type="primary", use_container_width=True
     )
 
-fixture_storage = FixtureStorage(Path(__file__).with_name("data.csv"))
 if refresh_clicked:
     try:
         with st.spinner("Refreshing Premier League fixtures..."):
-            matches_by_date = FootballDataClient().get_yesterday_and_tomorrow_matches()
-            refreshed_matches = [
-                match for matches in matches_by_date.values() for match in matches
-            ]
-            fixture_storage.merge_matchday(refreshed_matches)
+            _refreshed_matches, refreshed_count = application.refresh_fixtures()
     except (requests.exceptions.RequestException, ValueError) as error:
         st.error(f"Could not refresh fixtures: {error}")
     else:
-        st.success(f"Refreshed {len(refreshed_matches)} Premier League fixtures.")
+        st.success(f"Refreshed {refreshed_count} Premier League fixtures.")
 
-prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
-score_storage = ScoreStorage(Path(__file__).with_name("scores.csv"))
-scorer = PredictionScorer(prediction_storage, score_storage)
-all_fixtures = fixture_storage.load_matchday()
-scorer.score_completed_fixtures(all_fixtures)
-stored_predictions = prediction_storage.load_predictions()
-active_model_names = {model.model_id: model.name for model in get_prediction_models()}
+dashboard = application.load_dashboard()
+all_fixtures = dashboard["fixtures"]
+stored_predictions = dashboard["predictions"]
+active_model_names = dashboard["active_model_names"]
+model_summaries = dashboard.get("model_summaries", [])
 
-valid_predictions = stored_predictions
-if not stored_predictions.empty:
-    valid_predictions = stored_predictions.loc[
-        stored_predictions["prediction"].fillna("").astype(str).str.strip().ne("")
-        & ~stored_predictions["prediction"].fillna("").astype(str).str.lower().str.startswith(
-            "prediction unavailable"
-        )
-    ]
-gemma_model = next(
-    (model for model in get_prediction_models()),
-    None,
+with st.sidebar:
+    st.markdown("## ⚽ Touchline AI")
+    st.caption("PREMIER LEAGUE")
+    st.divider()
+    page = st.radio("Workspace", ["Matchday", "Leaderboard"], label_visibility="collapsed")
+    st.divider()
+    st.caption("PREDICTION MODELS")
+    if model_summaries:
+        for model in model_summaries:
+            st.markdown(
+                f"**{model['name']}**  \n`{model['model_id']}`"
+            )
+    else:
+        st.caption("No prediction providers registered.")
+
+prediction_count = sum(
+    int(model["prediction_count"])
+    for model in model_summaries
 )
-gemma_prediction_count = 0
-if gemma_model is not None and not valid_predictions.empty:
-    gemma_prediction_count = int(
-        valid_predictions.loc[
-            valid_predictions["model"] == gemma_model.model_id,
-            "match_id",
-        ].nunique()
-    )
-
-scores = score_storage.load_scores()
-gemma_points = 0
-if gemma_model is not None and not scores.empty:
-    gemma_points = int(
-        pd.to_numeric(
-            scores.loc[scores["model"] == gemma_model.model_id, "points"],
-            errors="coerce",
-        ).fillna(0).sum()
-    )
+total_points = sum(
+    int(model["points"])
+    for model in model_summaries
+)
 
 metrics = st.columns(3)
 for column, label, value in zip(
     metrics,
-    ["Season fixtures", "Gemma predictions", "Bot points"],
-    [str(len(all_fixtures)), str(gemma_prediction_count), str(gemma_points)],
+    ["Season fixtures", "Model predictions", "Bot points"],
+    [str(len(all_fixtures)), str(prediction_count), str(total_points)],
 ):
     with column:
         st.markdown(
@@ -172,7 +139,7 @@ for column, label, value in zip(
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
-    leaderboard = scorer.leaderboard()
+    leaderboard = dashboard["leaderboard"]
     if leaderboard.empty:
         st.info("Leaderboard scores will appear here after completed matches are scored.")
     else:
@@ -190,8 +157,7 @@ if page == "Leaderboard":
             )
         st.dataframe(display_rows, use_container_width=True, hide_index=True)
 else:
-    prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
-    all_fixtures = fixture_storage.load_matchday()
+    all_fixtures = dashboard["fixtures"]
     fixtures = all_fixtures
     completed_statuses = {"complete", "completed", "finished"}
     statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()
@@ -202,10 +168,8 @@ else:
     elif fixture_filter == "Completed":
         fixtures = fixtures.loc[statuses.isin(completed_statuses)]
 
-    stored_predictions = prediction_storage.load_predictions()
-    active_model_names = {
-        model.model_id: model.name for model in get_prediction_models()
-    }
+    stored_predictions = dashboard["predictions"]
+    active_model_names = dashboard["active_model_names"]
     disk_predictions: dict[str, dict[str, str]] = {}
     for row in stored_predictions.to_dict("records"):
         match_id = str(row.get("match_id", ""))
@@ -228,9 +192,7 @@ else:
             st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
         else:
             with st.spinner("The models are predicting missing matches..."):
-                new_predictions = predict_upcoming_for_models(
-                    all_fixtures, prediction_storage
-                )
+                new_predictions = application.predict_missing(all_fixtures)
                 merged_predictions = {
                     model_name: dict(model_predictions)
                     for model_name, model_predictions in disk_predictions.items()
@@ -294,6 +256,6 @@ else:
 
 st.markdown(
     '<div style="margin-top:2rem;color:#8a958d;font-size:.72rem">'
-    'Sample dashboard · Premier League · Gemma 4</div>',
+    'Sample dashboard · Premier League · Prediction models</div>',
     unsafe_allow_html=True,
 )
