@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from scoring import PredictionScorer
-from storage import PredictionStorage, ScoreStorage
+from storage import FixtureStorage, PredictionStorage, ScoreStorage
 
 
 class PredictionScoringTests(unittest.TestCase):
@@ -88,6 +88,28 @@ class PredictionScoringTests(unittest.TestCase):
             self.assertEqual(int(leaderboard.iloc[0]["predictions"]), 2)
             self.assertEqual(int(leaderboard.iloc[0]["correct"]), 1)
             self.assertEqual(int(leaderboard.iloc[0]["points"]), 1)
+
+    def test_storage_loads_zero_byte_and_malformed_csv_as_empty_frames(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            fixture_storage = FixtureStorage(root / "fixtures.csv")
+            prediction_storage = PredictionStorage(root / "predictions.csv")
+            score_storage = ScoreStorage(root / "scores.csv")
+
+            fixture_storage.path.write_bytes(b"")
+            prediction_storage.path.write_bytes(b"")
+            score_storage.path.write_bytes(b"")
+
+            self.assertTrue(fixture_storage.load_matchday().empty)
+            self.assertTrue(prediction_storage.load_predictions().empty)
+            self.assertTrue(score_storage.load_scores().empty)
+
+            prediction_storage.path.write_bytes(b"\xff\xfe\x00")
+            score_storage.path.write_bytes(b"not,a,valid,score,csv\n")
+
+            self.assertTrue(prediction_storage.load_predictions().empty)
+            self.assertTrue(score_storage.load_scores().empty)
 
 
 if __name__ == "__main__":

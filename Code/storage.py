@@ -57,6 +57,21 @@ class CsvStorage:
         finally:
             temporary_path.unlink(missing_ok=True)
 
+    def _read_csv(self, columns: list[str]) -> pd.DataFrame:
+        try:
+            if not self.path.exists() or self.path.stat().st_size == 0:
+                return pd.DataFrame(columns=columns)
+
+            frame = pd.read_csv(self.path, dtype={"match_id": "string"})
+        except (
+            pd.errors.EmptyDataError,
+            pd.errors.ParserError,
+            UnicodeDecodeError,
+            OSError,
+        ):
+            return pd.DataFrame(columns=columns)
+        return frame.reindex(columns=columns)
+
 
 class FixtureStorage(CsvStorage):
     """Store and retrieve Premier League fixtures."""
@@ -101,10 +116,7 @@ class FixtureStorage(CsvStorage):
             return self._load_frame_unlocked()
 
     def _load_frame_unlocked(self) -> pd.DataFrame:
-        if not self.path.exists():
-            return pd.DataFrame(columns=self.COLUMNS)
-        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
-        return frame.reindex(columns=self.COLUMNS)
+        return self._read_csv(self.COLUMNS)
 
     @staticmethod
     def _normalize(match: dict[str, Any]) -> dict[str, Any]:
@@ -162,10 +174,7 @@ class PredictionStorage(CsvStorage):
             return self._load_frame_unlocked()
 
     def _load_frame_unlocked(self) -> pd.DataFrame:
-        if not self.path.exists():
-            return pd.DataFrame(columns=self.COLUMNS)
-        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
-        return frame.reindex(columns=self.COLUMNS)
+        return self._read_csv(self.COLUMNS)
 
     @staticmethod
     def _normalize(row: dict[str, Any]) -> dict[str, Any]:
@@ -217,10 +226,7 @@ class ScoreStorage(CsvStorage):
             return self._load_frame_unlocked()
 
     def _load_frame_unlocked(self) -> pd.DataFrame:
-        if not self.path.exists():
-            return pd.DataFrame(columns=self.COLUMNS)
-        frame = pd.read_csv(self.path, dtype={"match_id": "string"})
-        return frame.reindex(columns=self.COLUMNS)
+        return self._read_csv(self.COLUMNS)
 
     @staticmethod
     def _normalize(row: dict[str, Any]) -> dict[str, Any]:

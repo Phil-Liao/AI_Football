@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 from google.genai import errors
-from requests import Response
+from requests import ConnectionError, Response
 
 import gemma4_prediction
 import prediction
@@ -33,6 +33,36 @@ class PredictionOrchestrationTests(unittest.TestCase):
         )
         response._content_consumed = True
         return errors.ServerError(503, response)
+
+    def test_prediction_models_are_discovered_from_provider_files(self) -> None:
+        fake_models = {
+            "alpha_prediction": FakeModel("Alpha", "alpha-id"),
+            "beta_prediction": FakeModel("Beta", "beta-id"),
+        }
+        provider_modules = {
+            module_name: unittest.mock.Mock(
+                get_prediction_model=unittest.mock.Mock(return_value=model)
+            )
+            for module_name, model in fake_models.items()
+        }
+
+        with (
+            patch.object(
+                prediction.Path,
+                "glob",
+                return_value=[Path("beta_prediction.py"), Path("alpha_prediction.py")],
+            ),
+            patch.object(
+                prediction,
+                "import_module",
+                side_effect=provider_modules.__getitem__,
+            ),
+        ):
+            discovered = prediction.get_prediction_models()
+            selected = prediction.get_prediction_model("beta-id")
+
+        self.assertEqual([model.name for model in discovered], ["Alpha", "Beta"])
+        self.assertIs(selected, fake_models["beta_prediction"])
 
     def test_predicts_only_fixtures_missing_for_each_registered_model(self) -> None:
         fixtures = pd.DataFrame(
@@ -313,6 +343,22 @@ class PredictionOrchestrationTests(unittest.TestCase):
         self.assertEqual(
             result, {"gemma": {"tomorrow": "gemma prediction for Home"}}
         )
+
+    def test_daily_run_returns_empty_when_api_is_unavailable(self) -> None:
+        fake_client = unittest.mock.Mock()
+        fake_client.get_matches.side_effect = ConnectionError("network unavailable")
+
+        with tempfile.TemporaryDirectory() as directory:
+            fixture_storage = FixtureStorage(Path(directory) / "fixtures.csv")
+            prediction_storage = PredictionStorage(Path(directory) / "predictions.csv")
+            result = prediction.run_daily_predictions(
+                fixture_storage,
+                prediction_storage,
+                fake_client,
+                today=date(2026, 11, 24),
+            )
+
+        self.assertEqual(result, {})
 
     @patch("prediction.BackgroundScheduler")
     def test_scheduler_runs_on_startup_and_repeats_daily(self, scheduler_factory) -> None:

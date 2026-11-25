@@ -1,7 +1,9 @@
 """UI-only prototype for the AI Football Premier League dashboard."""
 
+import html
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import requests
 import streamlit as st
@@ -64,7 +66,7 @@ st.markdown('<div class="hero-copy">Prediction models call the fixtures. The tab
 
 toolbar = st.columns([1, 1, 2, 2])
 with toolbar[0]:
-    st.selectbox("Season", ["2025/26", "2024/25"])
+    season_picker = st.empty()
 with toolbar[1]:
     fixture_filter = st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
 with toolbar[3]:
@@ -84,6 +86,27 @@ if refresh_clicked:
 
 dashboard = application.load_dashboard()
 all_fixtures = dashboard["fixtures"]
+kickoff_dates = pd.to_datetime(all_fixtures["match_date"], errors="coerce")
+season_start_years = kickoff_dates.dt.year - (kickoff_dates.dt.month < 8).astype(int)
+season_options = sorted(
+    {
+        f"{int(year)}/{(int(year) + 1) % 100:02d}"
+        for year in season_start_years.dropna()
+    },
+    reverse=True,
+)
+
+with season_picker:
+    if season_options:
+        selected_season = st.selectbox("Season", season_options)
+    else:
+        st.selectbox("Season", ["No season data"], disabled=True)
+        selected_season = None
+
+if selected_season is not None:
+    selected_start_year = int(selected_season.split("/", maxsplit=1)[0])
+    all_fixtures = all_fixtures.loc[season_start_years == selected_start_year]
+
 stored_predictions = dashboard["predictions"]
 active_model_names = dashboard["active_model_names"]
 model_summaries = dashboard.get("model_summaries", [])
@@ -127,6 +150,110 @@ else:
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
+    st.markdown("#### Points over time")
+    scores = dashboard["scores"]
+    if scores.empty:
+        st.info("Points history will appear here after completed matches are scored.")
+    else:
+        chart_scores = scores.copy()
+        chart_scores["match_date"] = (
+            pd.to_datetime(chart_scores["match_date"], errors="coerce", utc=True)
+            .dt.tz_localize(None)
+            .dt.normalize()
+        )
+        chart_scores["points"] = pd.to_numeric(
+            chart_scores["points"], errors="coerce"
+        ).fillna(0)
+        chart_scores = chart_scores.dropna(subset=["match_date"])
+        if selected_season is not None:
+            season_start = pd.Timestamp(
+                year=selected_start_year, month=8, day=1
+            )
+            season_end = pd.Timestamp(
+                year=selected_start_year + 1, month=8, day=1
+            )
+            chart_scores = chart_scores.loc[
+                (chart_scores["match_date"] >= season_start)
+                & (chart_scores["match_date"] < season_end)
+            ]
+
+        if chart_scores.empty:
+            st.info("No scored matches found for this season.")
+        else:
+            chart_scores["model"] = chart_scores["model"].map(
+                lambda model_id: active_model_names.get(
+                    str(model_id), str(model_id)
+                )
+            )
+            daily_points = chart_scores.groupby(
+                ["match_date", "model"], as_index=False
+            )["points"].sum()
+            points_over_time = (
+                daily_points.pivot(
+                    index="match_date", columns="model", values="points"
+                )
+                .fillna(0)
+                .sort_index()
+                .cumsum()
+            )
+            chart_data = points_over_time.rename_axis("match_date").reset_index().melt(
+                id_vars="match_date",
+                var_name="model",
+                value_name="points",
+            )
+            points_chart = (
+                alt.Chart(chart_data)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("match_date:T", title="Match date"),
+                    y=alt.Y(
+                        "points:Q",
+                        title="Cumulative points",
+                        scale=alt.Scale(domainMin=0),
+                    ),
+                    color=alt.Color(
+                        "model:N",
+                        title="Model",
+                        scale=alt.Scale(
+                            range=["#176b4c", "#247b53", "#8fbe9a", "#102b23"]
+                        ),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("match_date:T", title="Match date"),
+                        alt.Tooltip("model:N", title="Model"),
+                        alt.Tooltip("points:Q", title="Cumulative points"),
+                    ],
+                )
+                .properties(
+                    title="Cumulative Model Points by Match Date",
+                    height=350,
+                    background="#ffffff",
+                )
+                .configure_axis(
+                    domainColor="#dce5dc",
+                    gridColor="#e5ebe5",
+                    labelColor="#718078",
+                    labelFont="DM Sans",
+                    tickColor="#dce5dc",
+                    titleColor="#668071",
+                    titleFont="DM Sans",
+                )
+                .configure_legend(
+                    labelColor="#40564a",
+                    labelFont="DM Sans",
+                    titleColor="#102b23",
+                    titleFont="DM Sans",
+                )
+                .configure_title(
+                    anchor="start",
+                    color="#102b23",
+                    font="DM Sans",
+                    fontSize=16,
+                )
+                .configure_view(stroke="#e5ebe5")
+            )
+            st.altair_chart(points_chart, use_container_width=True)
+
     leaderboard = dashboard["leaderboard"]
     if leaderboard.empty:
         st.info("Leaderboard scores will appear here after completed matches are scored.")
@@ -143,9 +270,38 @@ if page == "Leaderboard":
                     "Accuracy": f'{float(row["accuracy"]):.1%}',
                 }
             )
-        st.dataframe(display_rows, use_container_width=True, hide_index=True)
+        columns = ["Model", "Predictions", "Correct", "Points", "Accuracy"]
+        header_cells = "".join(
+            f'<th scope="col" class="{"numeric-cell" if column != "Model" else ""}">'
+            f"{html.escape(column)}</th>"
+            for column in columns
+        )
+        table_rows = []
+        for row in display_rows:
+            model_cell = (
+                f'<th scope="row">{html.escape(str(row["Model"]))}</th>'
+            )
+            value_cells = []
+            for column in columns[1:]:
+                classes = "numeric-cell"
+                if column == "Points":
+                    classes += " points-cell"
+                value_cells.append(
+                    f'<td class="{classes}">'
+                    f"{html.escape(str(row[column]))}</td>"
+                )
+            table_rows.append(
+                f"<tr>{model_cell}{''.join(value_cells)}</tr>"
+            )
+        st.markdown(
+            '<div class="leaderboard-table-wrap">'
+            '<table class="leaderboard-table">'
+            f"<thead><tr>{header_cells}</tr></thead>"
+            f"<tbody>{''.join(table_rows)}</tbody>"
+            "</table></div>",
+            unsafe_allow_html=True,
+        )
 else:
-    all_fixtures = dashboard["fixtures"]
     fixtures = all_fixtures
     completed_statuses = {"complete", "completed", "finished"}
     statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()

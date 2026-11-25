@@ -6,9 +6,11 @@ import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from importlib import import_module
+from pathlib import Path
 from typing import Any, Iterable, Protocol, TypeGuard
 
 import pandas as pd
+import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -32,30 +34,60 @@ class PredictionModel(Protocol):
         """Return a prediction for one fixture."""
 
 
-MODEL_MODULES = {
-    "gemma": "gemma4_prediction",
-}
+def _load_prediction_models() -> list[PredictionModel]:
+    """Load providers exposed by local ``*_prediction.py`` modules."""
+    provider_files = sorted(Path(__file__).resolve().parent.glob("*_prediction.py"))
+    models = []
+    for provider_file in provider_files:
+        module = import_module(provider_file.stem)
+        factory = getattr(module, "get_prediction_model", None)
+        if callable(factory):
+            models.append(factory())
+    return models
 
 
-def get_prediction_model(name: str = "gemma") -> PredictionModel:
-    """Resolve a prediction provider by its public name."""
-    try:
-        module_name = MODEL_MODULES[name.lower()]
-    except KeyError as error:
-        available = ", ".join(sorted(MODEL_MODULES))
-        raise ValueError(f"Unknown prediction model '{name}'. Available: {available}") from error
+def get_prediction_model(name: str | None = None) -> PredictionModel:
+    """Resolve a provider by its declared name or model ID."""
+    models = get_prediction_models()
+    if name is None and models:
+        return models[0]
 
-    module = import_module(module_name)
-    factory = getattr(module, "get_prediction_model", None)
-    if factory is None:
-        raise ImportError(f"Provider '{name}' does not expose get_prediction_model")
-    return factory()
+    requested_name = (name or "").strip().casefold()
+    for model in models:
+        if requested_name in {model.name.casefold(), model.model_id.casefold()}:
+            return model
+
+    available = ", ".join(
+        f"{model.name} ({model.model_id})" for model in models
+    )
+    if not available:
+        available = "no prediction providers found"
+    raise ValueError(f"Unknown prediction model '{name}'. Available: {available}")
 
 
 def get_prediction_models(names: Iterable[str] | None = None) -> list[PredictionModel]:
-    """Resolve all registered providers, or a requested subset."""
-    model_names = MODEL_MODULES if names is None else names
-    return [get_prediction_model(name) for name in model_names]
+    """Load all provider modules, or select providers by name or model ID."""
+    models = _load_prediction_models()
+    if names is None:
+        return models
+
+    models_by_alias = {
+        alias.casefold(): model
+        for model in models
+        for alias in (model.name, model.model_id)
+    }
+    selected_models = []
+    for name in names:
+        requested_name = name.strip().casefold()
+        if requested_name not in models_by_alias:
+            available = ", ".join(
+                f"{model.name} ({model.model_id})" for model in models
+            )
+            raise ValueError(
+                f"Unknown prediction model '{name}'. Available: {available or 'none'}"
+            )
+        selected_models.append(models_by_alias[requested_name])
+    return selected_models
 
 
 def predict_fixtures(
@@ -112,7 +144,12 @@ def run_daily_predictions(
 
     tomorrow = (today or date.today()) + timedelta(days=1)
 
-    matches = football_client.get_matches(tomorrow)
+    try:
+        matches = football_client.get_matches(tomorrow)
+    except (requests.exceptions.RequestException, ValueError, OSError) as error:
+        LOGGER.warning("Daily fixture refresh failed: %s", error)
+        return {}
+
     if not matches:
         LOGGER.info("No fixtures found for %s; skipping daily predictions", tomorrow)
         return {}
