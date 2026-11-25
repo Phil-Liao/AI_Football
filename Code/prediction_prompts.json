@@ -1,0 +1,7 @@
+{
+  "match_outcome": {
+    "version": "2",
+    "template": "Predict the result of this English Premier League match. Use only the teams and available match context. Reply with exactly one outcome, choose one of: {home_team} win, Draw, {away_team} win. Do not add an explanation.\n\nKickoff: {kickoff}\nHome team: {home_team}\nAway team: {away_team}\n",
+    "historical_context_template": "\nPre-match context from earlier fixtures only. Do not infer the result from any information outside this context:\n{historical_context}\n"
+  }
+}
