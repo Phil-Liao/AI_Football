@@ -80,7 +80,7 @@ st.markdown('<div class="hero-copy">Prediction models call the fixtures. The tab
 
 toolbar = st.columns([1, 1, 2, 2])
 with toolbar[0]:
-    st.selectbox("Season", ["2025/26", "2024/25"])
+    season_picker = st.empty()
 with toolbar[1]:
     fixture_filter = st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
 with toolbar[3]:
@@ -100,6 +100,27 @@ if refresh_clicked:
 
 dashboard = application.load_dashboard()
 all_fixtures = dashboard["fixtures"]
+kickoff_dates = pd.to_datetime(all_fixtures["match_date"], errors="coerce")
+season_start_years = kickoff_dates.dt.year - (kickoff_dates.dt.month < 8).astype(int)
+season_options = sorted(
+    {
+        f"{int(year)}/{(int(year) + 1) % 100:02d}"
+        for year in season_start_years.dropna()
+    },
+    reverse=True,
+)
+
+with season_picker:
+    if season_options:
+        selected_season = st.selectbox("Season", season_options)
+    else:
+        st.selectbox("Season", ["No season data"], disabled=True)
+        selected_season = None
+
+if selected_season is not None:
+    selected_start_year = int(selected_season.split("/", maxsplit=1)[0])
+    all_fixtures = all_fixtures.loc[season_start_years == selected_start_year]
+
 stored_predictions = dashboard["predictions"]
 active_model_names = dashboard["active_model_names"]
 model_summaries = dashboard.get("model_summaries", [])
@@ -161,7 +182,6 @@ if page == "Leaderboard":
             )
         st.dataframe(display_rows, use_container_width=True, hide_index=True)
 else:
-    all_fixtures = dashboard["fixtures"]
     fixtures = all_fixtures
     completed_statuses = {"complete", "completed", "finished"}
     statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()
