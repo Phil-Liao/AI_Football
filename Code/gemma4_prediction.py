@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import threading
@@ -14,9 +13,10 @@ import pandas as pd
 from google import genai
 from google.genai import errors
 
+from prompting import PROMPT_VERSION, build_match_prediction_prompt
+
 
 MODEL = "gemma-4-26b-a4b-it"
-PROMPT_VERSION = "2"
 MIN_REQUEST_INTERVAL_SECONDS = 2.0
 MAX_503_RETRIES = 3
 RETRY_BASE_SECONDS = 1.0
@@ -53,28 +53,7 @@ def _is_overloaded(error: errors.APIError) -> bool:
 
 def predict_match(fixture: dict[str, Any]) -> str | None:
     """Return a short predicted outcome for one Premier League fixture."""
-    home_team = fixture.get("home_team", "Home team")
-    away_team = fixture.get("away_team", "Away team")
-    kickoff = fixture.get("match_date", "unknown date")
-
-    prompt = (
-        "Predict the result of this English Premier League match. "
-        "Use only the teams and available match context. "
-        "Reply with exactly one outcome, choose one of: "
-        f"{home_team} win, Draw, {away_team} win. "
-        "Do not add an explanation.\n\n"
-        f"Kickoff: {kickoff}\n"
-        f"Home team: {home_team}\n"
-        f"Away team: {away_team}\n"
-    )
-
-    historical_context = fixture.get("historical_context", [])
-    if historical_context:
-        prompt += (
-            "\nPre-match context from earlier fixtures only. "
-            "Do not infer the result from any information outside this context:\n"
-            f"{json.dumps(historical_context, ensure_ascii=False)}\n"
-        )
+    prompt = build_match_prediction_prompt(fixture)
 
     try:
         client = get_client()
