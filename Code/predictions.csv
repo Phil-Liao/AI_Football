@@ -1,0 +1,11 @@
+match_id,match_date,home_team,away_team,model,prediction,prompt_version,status,created_at
+740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-24T19:31:01.279674+00:00
+740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemma-4-26b-a4b-it,Chelsea win,2,stored,2026-11-24T19:31:20.204595+00:00
+1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemma-4-26b-a4b-it,Arsenal win,2,stored,2026-11-24T19:32:50.720847+00:00
+1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemma-4-26b-a4b-it,Manchester City win,2,stored,2026-11-24T19:50:25.154165+00:00
+1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-24T19:51:15.666411+00:00
+1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-24T19:51:45.855902+00:00
+1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemma-4-26b-a4b-it,Tottenham Hotspur win,2,stored,2026-11-24T19:53:10.439876+00:00
+740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-24T19:54:52.628794+00:00
+740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemma-4-26b-a4b-it,Liverpool win,2,stored,2026-11-24T19:55:34.806813+00:00
+1005426588,2026-11-23 20:00:00,Brentford,Everton,gemma-4-26b-a4b-it,Brentford win,2,stored,2026-11-24T19:56:26.129290+00:00

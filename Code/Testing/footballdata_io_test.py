@@ -13,7 +13,6 @@ endpoint = f"/matches/date/{yesterday}"
 url = base_url + endpoint
 
 headers = {'Authorization': "Bearer " + os.getenv("FOOTBALLDATAIO_KEY")}
-print(os.getenv("FOOTBALLDATAIO_KEY"))
 
 try:
     response = requests.get(url, headers=headers)

@@ -3,3 +3,4 @@ python-dotenv
 requests
 streamlit
 pandas
+APScheduler>=3.10,<4

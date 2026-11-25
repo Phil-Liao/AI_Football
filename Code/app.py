@@ -1,6 +1,19 @@
 """UI-only prototype for the AI Football Premier League dashboard."""
 
+from pathlib import Path
+
+import pandas as pd
+import requests
 import streamlit as st
+
+from football_data import FootballDataClient
+from prediction import (
+    get_prediction_models,
+    predict_upcoming_for_models,
+    start_daily_prediction_scheduler,
+)
+from scoring import PredictionScorer
+from storage import FixtureStorage, PredictionStorage, ScoreStorage
 
 
 st.set_page_config(
@@ -8,6 +21,17 @@ st.set_page_config(
     page_icon="⚽",
     layout="wide",
 )
+
+
+@st.cache_resource
+def _start_daily_prediction_scheduler():
+    return start_daily_prediction_scheduler(
+        FixtureStorage(Path(__file__).with_name("data.csv")),
+        PredictionStorage(Path(__file__).with_name("predictions.csv")),
+    )
+
+
+_start_daily_prediction_scheduler()
 
 st.markdown(
     """
@@ -73,16 +97,71 @@ toolbar = st.columns([1, 1, 2, 2])
 with toolbar[0]:
     st.selectbox("Season", ["2025/26", "2024/25"])
 with toolbar[1]:
-    st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
+    fixture_filter = st.selectbox("Fixtures", ["All matches", "Upcoming", "Completed"])
 with toolbar[3]:
     st.write("")
-    st.button("↻  Refresh fixtures", type="primary", use_container_width=True)
+    refresh_clicked = st.button(
+        "↻  Refresh fixtures", type="primary", use_container_width=True
+    )
+
+fixture_storage = FixtureStorage(Path(__file__).with_name("data.csv"))
+if refresh_clicked:
+    try:
+        with st.spinner("Refreshing Premier League fixtures..."):
+            matches_by_date = FootballDataClient().get_yesterday_and_tomorrow_matches()
+            refreshed_matches = [
+                match for matches in matches_by_date.values() for match in matches
+            ]
+            fixture_storage.merge_matchday(refreshed_matches)
+    except (requests.exceptions.RequestException, ValueError) as error:
+        st.error(f"Could not refresh fixtures: {error}")
+    else:
+        st.success(f"Refreshed {len(refreshed_matches)} Premier League fixtures.")
+
+prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
+score_storage = ScoreStorage(Path(__file__).with_name("scores.csv"))
+scorer = PredictionScorer(prediction_storage, score_storage)
+all_fixtures = fixture_storage.load_matchday()
+scorer.score_completed_fixtures(all_fixtures)
+stored_predictions = prediction_storage.load_predictions()
+active_model_names = {model.model_id: model.name for model in get_prediction_models()}
+
+valid_predictions = stored_predictions
+if not stored_predictions.empty:
+    valid_predictions = stored_predictions.loc[
+        stored_predictions["prediction"].fillna("").astype(str).str.strip().ne("")
+        & ~stored_predictions["prediction"].fillna("").astype(str).str.lower().str.startswith(
+            "prediction unavailable"
+        )
+    ]
+gemma_model = next(
+    (model for model in get_prediction_models()),
+    None,
+)
+gemma_prediction_count = 0
+if gemma_model is not None and not valid_predictions.empty:
+    gemma_prediction_count = int(
+        valid_predictions.loc[
+            valid_predictions["model"] == gemma_model.model_id,
+            "match_id",
+        ].nunique()
+    )
+
+scores = score_storage.load_scores()
+gemma_points = 0
+if gemma_model is not None and not scores.empty:
+    gemma_points = int(
+        pd.to_numeric(
+            scores.loc[scores["model"] == gemma_model.model_id, "points"],
+            errors="coerce",
+        ).fillna(0).sum()
+    )
 
 metrics = st.columns(3)
 for column, label, value in zip(
     metrics,
     ["Season fixtures", "Gemma predictions", "Bot points"],
-    ["38", "—", "—"],
+    [str(len(all_fixtures)), str(gemma_prediction_count), str(gemma_points)],
 ):
     with column:
         st.markdown(
@@ -93,23 +172,115 @@ for column, label, value in zip(
 
 if page == "Leaderboard":
     st.markdown('<div class="section-head"><p class="section-title">Bot leaderboard</p></div>', unsafe_allow_html=True)
-    st.info("Leaderboard scores will appear here.")
+    leaderboard = scorer.leaderboard()
+    if leaderboard.empty:
+        st.info("Leaderboard scores will appear here after completed matches are scored.")
+    else:
+        display_rows = []
+        for row in leaderboard.to_dict("records"):
+            model_name = active_model_names.get(str(row["model"]), str(row["model"]))
+            display_rows.append(
+                {
+                    "Model": model_name,
+                    "Predictions": int(row["predictions"]),
+                    "Correct": int(row["correct"]),
+                    "Points": int(row["points"]),
+                    "Accuracy": f'{float(row["accuracy"]):.1%}',
+                }
+            )
+        st.dataframe(display_rows, use_container_width=True, hide_index=True)
 else:
+    prediction_storage = PredictionStorage(Path(__file__).with_name("predictions.csv"))
+    all_fixtures = fixture_storage.load_matchday()
+    fixtures = all_fixtures
+    completed_statuses = {"complete", "completed", "finished"}
+    statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()
+    if fixture_filter == "Upcoming":
+        kickoff_times = pd.to_datetime(fixtures["match_date"], errors="coerce", utc=True)
+        future_kickoffs = kickoff_times > pd.Timestamp.now(tz="UTC")
+        fixtures = fixtures.loc[future_kickoffs & ~statuses.isin(completed_statuses)]
+    elif fixture_filter == "Completed":
+        fixtures = fixtures.loc[statuses.isin(completed_statuses)]
+
+    stored_predictions = prediction_storage.load_predictions()
+    active_model_names = {
+        model.model_id: model.name for model in get_prediction_models()
+    }
+    disk_predictions: dict[str, dict[str, str]] = {}
+    for row in stored_predictions.to_dict("records"):
+        match_id = str(row.get("match_id", ""))
+        model_id = str(row.get("model", ""))
+        prediction = str(row.get("prediction", "")).strip()
+        if match_id and model_id:
+            if prediction and not prediction.lower().startswith("prediction unavailable"):
+                model_name = active_model_names.get(model_id, model_id)
+                disk_predictions.setdefault(model_name, {})[match_id] = prediction
+
     heading, action = st.columns([3, 1])
     with heading:
         st.markdown('<div class="section-head"><p class="section-title">Matchday fixtures</p></div>', unsafe_allow_html=True)
     with action:
         st.write("")
-        st.button("✦  Predict upcoming", use_container_width=True)
+        predict_clicked = st.button("✦  Predict missing", use_container_width=True, key="predict_upcoming")
 
-    # Static sample cards keep this file focused on Streamlit UI only.
-    sample_fixtures = [
-        ("Sat, Aug 16 · 12:30", "Liverpool", "Bournemouth", "vs", "Prediction pending", "UPCOMING"),
-        ("Sat, Aug 16 · 15:00", "Aston Villa", "Newcastle", "vs", "Prediction pending", "UPCOMING"),
-        ("Sun, Aug 17 · 16:30", "Manchester United", "Arsenal", "vs", "Prediction pending", "UPCOMING"),
-        ("Fri, Aug 15 · 20:00", "Liverpool", "Bournemouth", "4 – 2", "Gemma 4 · 2–1", "FT"),
-    ]
-    for kickoff, home, away, score, prediction, status in sample_fixtures:
+    if predict_clicked:
+        if all_fixtures.empty:
+            st.warning("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
+        else:
+            with st.spinner("The models are predicting missing matches..."):
+                new_predictions = predict_upcoming_for_models(
+                    all_fixtures, prediction_storage
+                )
+                merged_predictions = {
+                    model_name: dict(model_predictions)
+                    for model_name, model_predictions in disk_predictions.items()
+                }
+                for model_name, model_predictions in new_predictions.items():
+                    merged_predictions.setdefault(model_name, {}).update(
+                        model_predictions
+                    )
+                st.session_state.model_predictions = merged_predictions
+
+    if all_fixtures.empty:
+        st.info("No stored fixtures found. Run football_data.py to fetch the matchday fixtures.")
+    elif fixtures.empty:
+        st.info(f"No {fixture_filter.lower()} fixtures found.")
+
+    session_predictions = st.session_state.get("model_predictions", {})
+    predictions = {
+        model_name: dict(model_predictions)
+        for model_name, model_predictions in disk_predictions.items()
+    }
+    if isinstance(session_predictions, dict):
+        for model_name, model_predictions in session_predictions.items():
+            if isinstance(model_predictions, dict):
+                for match_id, value in model_predictions.items():
+                    if not isinstance(value, str):
+                        continue
+                    value = value.strip()
+                    if value and not value.lower().startswith("prediction unavailable"):
+                        predictions.setdefault(model_name, {})[match_id] = value
+    st.session_state.model_predictions = predictions
+
+    for fixture in fixtures.to_dict("records"):
+        kickoff = fixture.get("match_date", "")
+        home = fixture.get("home_team", "")
+        away = fixture.get("away_team", "")
+        home_score = fixture.get("home_score", "")
+        away_score = fixture.get("away_score", "")
+        score = (
+            f"{home_score} – {away_score}"
+            if str(home_score) not in ("", "nan") and str(away_score) not in ("", "nan")
+            else "vs"
+        )
+        status = str(fixture.get("status", "")).upper() or "UPCOMING"
+        match_id = str(fixture.get("match_id", ""))
+        match_predictions = [
+            f"{model_name}: {model_predictions[match_id]}"
+            for model_name, model_predictions in predictions.items()
+            if match_id in model_predictions
+        ]
+        prediction = " · ".join(match_predictions) or "Prediction pending"
         st.markdown(
             '<div class="match-card">'
             f'<div class="match-date">{kickoff}</div>'
