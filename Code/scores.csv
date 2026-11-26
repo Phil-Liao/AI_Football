@@ -1,20 +1,20 @@
 match_id,match_date,home_team,away_team,model,prompt_version,prediction,actual_outcome,points,status,scored_at
-740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemma-4-26b-a4b-it,2,Draw,Draw,1,scored,2026-11-25T21:58:47.028975+00:00
-740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemma-4-26b-a4b-it,2,Chelsea win,Away win,0,scored,2026-11-25T21:58:47.028975+00:00
-1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemma-4-26b-a4b-it,2,Arsenal win,Draw,0,scored,2026-11-25T21:58:47.028975+00:00
-1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemma-4-26b-a4b-it,2,Manchester City win,Draw,0,scored,2026-11-25T21:58:47.028975+00:00
-1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
-1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
-1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemma-4-26b-a4b-it,2,Tottenham Hotspur win,Home win,1,scored,2026-11-25T21:58:47.028975+00:00
-740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
-740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemma-4-26b-a4b-it,2,Liverpool win,Home win,1,scored,2026-11-25T21:58:47.028975+00:00
-1005426588,2026-11-23 20:00:00,Brentford,Everton,gemma-4-26b-a4b-it,2,Brentford win,Home win,1,scored,2026-11-25T21:58:47.028975+00:00
-1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemini-3.1-flash-lite,2,Manchester City win,Draw,0,scored,2026-11-25T21:58:47.028975+00:00
-740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemini-3.1-flash-lite,2,Aston Villa win,Draw,0,scored,2026-11-25T21:58:47.028975+00:00
-740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemini-3.1-flash-lite,2,Chelsea win,Away win,0,scored,2026-11-25T21:58:47.028975+00:00
-1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
-1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
-1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemini-3.1-flash-lite,2,Tottenham Hotspur win,Home win,1,scored,2026-11-25T21:58:47.028975+00:00
-1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemini-3.1-flash-lite,2,Draw,Draw,1,scored,2026-11-25T21:58:47.028975+00:00
-740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemini-3.1-flash-lite,2,Liverpool win,Home win,1,scored,2026-11-25T21:58:47.028975+00:00
-1005426588,2026-11-23 20:00:00,Brentford,Everton,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-25T21:58:47.028975+00:00
+740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemma-4-26b-a4b-it,2,Draw,Draw,1,scored,2026-11-26T14:12:00.536718+00:00
+740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemma-4-26b-a4b-it,2,Chelsea win,Away win,0,scored,2026-11-26T14:12:00.536718+00:00
+1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemma-4-26b-a4b-it,2,Arsenal win,Draw,0,scored,2026-11-26T14:12:00.536718+00:00
+1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemma-4-26b-a4b-it,2,Manchester City win,Draw,0,scored,2026-11-26T14:12:00.536718+00:00
+1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00
+1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00
+1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemma-4-26b-a4b-it,2,Tottenham Hotspur win,Home win,1,scored,2026-11-26T14:12:00.536718+00:00
+740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemma-4-26b-a4b-it,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00
+740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemma-4-26b-a4b-it,2,Liverpool win,Home win,1,scored,2026-11-26T14:12:00.536718+00:00
+1005426588,2026-11-23 20:00:00,Brentford,Everton,gemma-4-26b-a4b-it,2,Brentford win,Home win,1,scored,2026-11-26T14:12:00.536718+00:00
+1004778873,2026-11-21 12:30:00,Manchester City,Fulham,gemini-3.1-flash-lite,2,Manchester City win,Draw,0,scored,2026-11-26T14:12:00.536718+00:00
+740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,gemini-3.1-flash-lite,2,Aston Villa win,Draw,0,scored,2026-11-26T14:12:00.536718+00:00
+740745801,2026-11-21 15:00:00,Chelsea,Leeds United,gemini-3.1-flash-lite,2,Chelsea win,Away win,0,scored,2026-11-26T14:12:00.536718+00:00
+1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00
+1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00
+1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,gemini-3.1-flash-lite,2,Tottenham Hotspur win,Home win,1,scored,2026-11-26T14:12:00.536718+00:00
+1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,gemini-3.1-flash-lite,2,Draw,Draw,1,scored,2026-11-26T14:12:00.536718+00:00
+740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemini-3.1-flash-lite,2,Liverpool win,Home win,1,scored,2026-11-26T14:12:00.536718+00:00
+1005426588,2026-11-23 20:00:00,Brentford,Everton,gemini-3.1-flash-lite,2,Draw,Home win,0,scored,2026-11-26T14:12:00.536718+00:00

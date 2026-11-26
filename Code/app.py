@@ -303,7 +303,7 @@ if page == "Leaderboard":
         )
 else:
     fixtures = all_fixtures
-    completed_statuses = {"complete", "completed", "finished"}
+    completed_statuses = {"complete", "completed", "finished", "ft"}
     statuses = fixtures["status"].fillna("").astype(str).str.strip().str.lower()
     if fixture_filter == "Upcoming":
         kickoff_times = pd.to_datetime(fixtures["match_date"], errors="coerce", utc=True)
@@ -374,9 +374,12 @@ else:
         away = fixture.get("away_team", "")
         home_score = fixture.get("home_score", "")
         away_score = fixture.get("away_score", "")
+        fixture_status = str(fixture.get("status", "")).strip().lower()
         score = (
             f"{home_score} – {away_score}"
-            if str(home_score) not in ("", "nan") and str(away_score) not in ("", "nan")
+            if fixture_status in completed_statuses
+            and str(home_score) not in ("", "nan")
+            and str(away_score) not in ("", "nan")
             else "vs"
         )
         status = str(fixture.get("status", "")).upper() or "UPCOMING"
