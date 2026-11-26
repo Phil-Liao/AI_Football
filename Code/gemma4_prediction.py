@@ -75,6 +75,7 @@ def predict_match(fixture: dict[str, Any]) -> str | None:
                     attempt + 1,
                     error,
                 )
+
                 return None
 
             delay = RETRY_BASE_SECONDS * (2**attempt)
