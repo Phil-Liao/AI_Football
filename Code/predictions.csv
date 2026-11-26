@@ -19,3 +19,5 @@ match_id,match_date,home_team,away_team,model,prediction,prompt_version,status,c
 740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,gemini-3.1-flash-lite,Brighton & Hove Albion win,2,stored,2026-11-25T21:56:34.819116+00:00
 740745827,2026-11-22 16:30:00,Liverpool,Manchester United,gemini-3.1-flash-lite,Liverpool win,2,stored,2026-11-25T21:56:36.893698+00:00
 1005426588,2026-11-23 20:00:00,Brentford,Everton,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:38.734842+00:00
+990310628,2026-11-27 20:00:00,Nottingham Forest,Chelsea,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-26T14:02:32.036131+00:00
+990310628,2026-11-27 20:00:00,Nottingham Forest,Chelsea,gemini-3.1-flash-lite,Draw,2,stored,2026-11-26T14:11:50.044049+00:00
