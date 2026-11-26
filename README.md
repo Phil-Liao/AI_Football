@@ -2,6 +2,8 @@
 
 An AI-powered Premier League match predictor that compares language-model predictions with final match results.
 
+**Live demo:** [touchline.streamlit.app](https://touchline.streamlit.app/)
+
 ## The Problem
 
 Football fans and fantasy players often rely on intuition or fragmented information to predict match outcomes. AI_Football aims to give an English Premier League match an automated second opinion, preserve each model's prediction, and score it against the actual result so that model performance can be compared over time.
@@ -29,7 +31,7 @@ The request flow is:
 - **Data and charting:** pandas, Altair
 - **Scheduling:** APScheduler
 - **API and environment tools:** requests, python-dotenv
-- **AI:** Google Gen AI SDK with Gemma 4 (`gemma-4-26b-a4b-it`)
+- **AI:** Google Gen AI SDK
 - **External data:** [FootballData.io](https://footballdata.io/) Premier League API
 - **Data storage:** CSV files with file locks and atomic writes
 
@@ -41,7 +43,7 @@ Install:
 
 - Python 3.10 or newer
 - `git`
-- A Google AI API key with access to `gemma-4-26b-a4b-it`
+- A Google AI API key with access to `gemma-4-26b-a4b-it` and other models
 - A FootballData.io API key
 
 ### 2. Clone the repository
