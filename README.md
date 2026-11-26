@@ -169,11 +169,11 @@ Some tests make API requests and require valid credentials in `Code/.env`.
 - [x] Add process-safe CSV locking and atomic writes
 - [x] Add provider discovery and model-neutral prediction orchestration
 - [x] Add unit tests for storage, API clients, scoring, and prediction flows
-- [ ] Add walkthrough video
-- [ ] Add multiple prediction models
+- [x] Add walkthrough video
+- [x] Add multiple prediction models
 - [ ] Add fantasy football substitution and transfer policies
-- [ ] Add automated cloud deployment
+- [x] Add automated cloud deployment
 
 ## Demo
 
-[Watch the project video walkthrough](https://github.com/Phil-Liao/AI_Football)
+[Watch the project video walkthrough](https://canva.link/wzd5twdhks5b1hc)
