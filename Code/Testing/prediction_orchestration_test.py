@@ -10,6 +10,7 @@ from requests import ConnectionError, Response
 
 import gemma4_prediction
 import gemini_flash_lite_prediction
+import openrouter_prediction
 import prediction
 from storage import FixtureStorage, PredictionStorage
 
@@ -238,6 +239,43 @@ class PredictionOrchestrationTests(unittest.TestCase):
         self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
         self.assertNotIn("999", prompt)
         self.assertNotIn("888", prompt)
+
+    def test_openrouter_ernie_uses_shared_prompt_and_configured_key(self) -> None:
+        response = unittest.mock.Mock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "Draw"}}]
+        }
+        fixture = {
+            "match_date": "2026-11-25 12:00:00",
+            "home_team": "Target Home",
+            "away_team": "Target Away",
+            "home_score": "999",
+            "raw_match": '{"winner_text":"TARGET_RESULT_TOKEN"}',
+        }
+
+        with (
+            patch.dict("os.environ", {"OPEN_ROUTER_KEY": "test-key"}),
+            patch.object(openrouter_prediction.dotenv, "load_dotenv"),
+            patch.object(openrouter_prediction.requests, "post", return_value=response) as post,
+        ):
+            result = openrouter_prediction.predict_match(fixture)
+
+        self.assertEqual(result, "Draw")
+        post.assert_called_once()
+        self.assertEqual(post.call_args.args[0], openrouter_prediction.API_URL)
+        self.assertEqual(
+            post.call_args.kwargs["headers"]["Authorization"], "Bearer test-key"
+        )
+        self.assertEqual(
+            post.call_args.kwargs["json"]["model"], openrouter_prediction.MODEL
+        )
+        self.assertEqual(
+            post.call_args.kwargs["json"]["reasoning"], {"enabled": True}
+        )
+        prompt = post.call_args.kwargs["json"]["messages"][0]["content"]
+        self.assertIn("Target Home", prompt)
+        self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
+        self.assertNotIn("999", prompt)
 
     def test_gemini_flash_lite_uses_second_key_timeout_and_shared_prompt(self) -> None:
         client = unittest.mock.Mock()

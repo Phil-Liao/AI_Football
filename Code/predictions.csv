@@ -21,3 +21,14 @@ match_id,match_date,home_team,away_team,model,prediction,prompt_version,status,c
 1005426588,2026-11-23 20:00:00,Brentford,Everton,gemini-3.1-flash-lite,Draw,2,stored,2026-11-25T21:56:38.734842+00:00
 990310628,2026-11-27 20:00:00,Nottingham Forest,Chelsea,gemma-4-26b-a4b-it,Draw,2,stored,2026-11-26T14:02:32.036131+00:00
 990310628,2026-11-27 20:00:00,Nottingham Forest,Chelsea,gemini-3.1-flash-lite,Draw,2,stored,2026-11-26T14:11:50.044049+00:00
+990310628,2026-11-27 20:00:00,Nottingham Forest,Chelsea,baidu/ernie-5.5-flash-preview:free,Nottingham Forest win,2,stored,2026-11-26T17:49:19.056006+00:00
+1004778873,2026-11-21 12:30:00,Manchester City,Fulham,baidu/ernie-5.5-flash-preview:free,Manchester City win,2,stored,2026-11-26T17:49:23.496124+00:00
+740533379,2026-11-21 15:00:00,Aston Villa,Sunderland,baidu/ernie-5.5-flash-preview:free,Draw,2,stored,2026-11-26T17:49:24.911550+00:00
+740745801,2026-11-21 15:00:00,Chelsea,Leeds United,baidu/ernie-5.5-flash-preview:free,Chelsea win,2,stored,2026-11-26T17:49:26.275472+00:00
+1001968432,2026-11-21 15:00:00,Coventry City,Crystal Palace,baidu/ernie-5.5-flash-preview:free,Draw,2,stored,2026-11-26T17:49:27.836642+00:00
+1005426555,2026-11-21 15:00:00,AFC Bournemouth,Nottingham Forest,baidu/ernie-5.5-flash-preview:free,Draw,2,stored,2026-11-26T17:49:30.168412+00:00
+1009534482,2026-11-21 15:00:00,Tottenham Hotspur,Ipswich Town,baidu/ernie-5.5-flash-preview:free,Tottenham Hotspur win,2,stored,2026-11-26T17:49:32.219499+00:00
+1005642731,2026-11-21 17:30:00,Newcastle United,Arsenal,baidu/ernie-5.5-flash-preview:free,Arsenal win,2,stored,2026-11-26T17:49:34.074573+00:00
+740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,baidu/ernie-5.5-flash-preview:free,Brighton & Hove Albion win,2,stored,2026-11-26T17:49:35.901639+00:00
+740745827,2026-11-22 16:30:00,Liverpool,Manchester United,baidu/ernie-5.5-flash-preview:free,Liverpool win,2,stored,2026-11-26T17:49:38.277653+00:00
+1005426588,2026-11-23 20:00:00,Brentford,Everton,baidu/ernie-5.5-flash-preview:free,Everton win,2,stored,2026-11-26T17:49:40.055547+00:00
