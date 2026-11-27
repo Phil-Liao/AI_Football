@@ -10,6 +10,7 @@ from requests import ConnectionError, Response
 
 import gemma4_prediction
 import gemini_flash_lite_prediction
+import nemotron_prediction
 import openrouter_prediction
 import prediction
 from storage import FixtureStorage, PredictionStorage
@@ -273,6 +274,66 @@ class PredictionOrchestrationTests(unittest.TestCase):
             post.call_args.kwargs["json"]["reasoning"], {"enabled": True}
         )
         prompt = post.call_args.kwargs["json"]["messages"][0]["content"]
+        self.assertIn("Target Home", prompt)
+        self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
+        self.assertNotIn("999", prompt)
+
+    def test_nemotron_preserves_reasoning_details_for_followup_request(self) -> None:
+        reasoning_details = [{"type": "reasoning.test", "data": "opaque-value"}]
+        first_response = unittest.mock.Mock()
+        first_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "Initial analysis",
+                        "reasoning_details": reasoning_details,
+                    }
+                }
+            ]
+        }
+        final_response = unittest.mock.Mock()
+        final_response.json.return_value = {
+            "choices": [{"message": {"content": "Away win"}}]
+        }
+        fixture = {
+            "match_date": "2026-11-25 12:00:00",
+            "home_team": "Target Home",
+            "away_team": "Target Away",
+            "home_score": "999",
+            "raw_match": '{"winner_text":"TARGET_RESULT_TOKEN"}',
+        }
+
+        with (
+            patch.dict("os.environ", {"OPEN_ROUTER_KEY": "test-key"}),
+            patch.object(nemotron_prediction.dotenv, "load_dotenv"),
+            patch.object(
+                nemotron_prediction.requests,
+                "post",
+                side_effect=[first_response, final_response],
+            ) as post,
+        ):
+            result = nemotron_prediction.predict_match(fixture)
+
+        self.assertEqual(result, "Away win")
+        self.assertEqual(post.call_count, 2)
+        first_payload = post.call_args_list[0].kwargs["json"]
+        second_payload = post.call_args_list[1].kwargs["json"]
+        self.assertEqual(first_payload["model"], nemotron_prediction.MODEL)
+        self.assertEqual(first_payload["reasoning"], {"enabled": True})
+        self.assertEqual(second_payload["model"], nemotron_prediction.MODEL)
+        self.assertEqual(second_payload["reasoning"], {"enabled": True})
+        self.assertEqual(
+            second_payload["messages"][1],
+            {
+                "role": "assistant",
+                "content": "Initial analysis",
+                "reasoning_details": reasoning_details,
+            },
+        )
+        self.assertIs(
+            second_payload["messages"][1]["reasoning_details"], reasoning_details
+        )
+        prompt = first_payload["messages"][0]["content"]
         self.assertIn("Target Home", prompt)
         self.assertNotIn("TARGET_RESULT_TOKEN", prompt)
         self.assertNotIn("999", prompt)

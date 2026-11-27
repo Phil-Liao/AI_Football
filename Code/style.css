@@ -24,7 +24,9 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .teams { flex:1; font-weight:700; color:#19372b; }
 .team-separator { color:#8d9a91; font-weight:400; }
 .score { min-width:65px; text-align:center; font-weight:800; font-size:1.05rem; color:#18382a; }
-.prediction { min-width:135px; text-align:right; color:#27734b; font-size:.79rem; font-weight:700; }
+.prediction { min-width:135px; text-align:left; color:#27734b; font-size:.79rem; font-weight:700; }
+.prediction-item { line-height:1.45; }
+.prediction-model { color:#718078; font-weight:600; }
 .status { min-width:76px; text-align:center; color:#718078; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; }
 .stButton > button { border-radius:6px; font-weight:700; }
 .stButton > button[kind="primary"] { background:#176b4c; border-color:#176b4c; }
