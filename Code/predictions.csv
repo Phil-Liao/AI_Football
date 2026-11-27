@@ -32,3 +32,9 @@ match_id,match_date,home_team,away_team,model,prediction,prompt_version,status,c
 740533380,2026-11-22 14:00:00,Hull City,Brighton &amp; Hove Albion,baidu/ernie-5.5-flash-preview:free,Brighton & Hove Albion win,2,stored,2026-11-26T17:49:35.901639+00:00
 740745827,2026-11-22 16:30:00,Liverpool,Manchester United,baidu/ernie-5.5-flash-preview:free,Liverpool win,2,stored,2026-11-26T17:49:38.277653+00:00
 1005426588,2026-11-23 20:00:00,Brentford,Everton,baidu/ernie-5.5-flash-preview:free,Everton win,2,stored,2026-11-26T17:49:40.055547+00:00
+740745799,2026-11-28 15:00:00,Manchester United,Brentford,gemini-3.1-flash-lite,Brentford win,2,stored,2026-11-27T15:36:47.439996+00:00
+994840701,2026-11-28 15:00:00,Leeds United,Coventry City,gemini-3.1-flash-lite,Leeds United win,2,stored,2026-11-27T15:36:51.855386+00:00
+992036602,2026-11-28 17:30:00,Ipswich Town,Aston Villa,gemini-3.1-flash-lite,Aston Villa win,2,stored,2026-11-27T15:36:55.215396+00:00
+740745799,2026-11-28 15:00:00,Manchester United,Brentford,gemma-4-26b-a4b-it,Manchester United win,2,stored,2026-11-27T15:38:21.386485+00:00
+994840701,2026-11-28 15:00:00,Leeds United,Coventry City,gemma-4-26b-a4b-it,Leeds United win,2,stored,2026-11-27T15:39:33.403920+00:00
+992036602,2026-11-28 17:30:00,Ipswich Town,Aston Villa,gemma-4-26b-a4b-it,Aston Villa win,2,stored,2026-11-27T15:40:41.745191+00:00

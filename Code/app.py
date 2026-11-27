@@ -385,11 +385,15 @@ else:
         status = str(fixture.get("status", "")).upper() or "UPCOMING"
         match_id = str(fixture.get("match_id", ""))
         match_predictions = [
-            f"{model_name}: {model_predictions[match_id]}"
+            '<div class="prediction-item">'
+            f'<span class="prediction-model">{html.escape(model_name)}:</span> '
+            f'{html.escape(model_predictions[match_id])}</div>'
             for model_name, model_predictions in predictions.items()
             if match_id in model_predictions
         ]
-        prediction = " · ".join(match_predictions) or "Prediction pending"
+        prediction = "".join(match_predictions) or (
+            '<div class="prediction-item">Prediction pending</div>'
+        )
         st.markdown(
             '<div class="match-card">'
             f'<div class="match-date">{kickoff}</div>'
